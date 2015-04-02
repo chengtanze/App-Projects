@@ -1,0 +1,378 @@
+//
+//  ReportformsControllerT.m
+//  Smartbox
+//
+//  Created by Mesada on 14/12/15.
+//  Copyright (c) 2014年 mesada. All rights reserved.
+//
+
+#import "ReportformsControllerT.h"
+#import "driveChartCell.h"
+#import "mileageChartCell.h"
+#import "badDriverChartCell.h"
+#import "maxSpeedChartCell.h"
+#import "AFJsonAPIClient.h"
+#define DATESPAN 6
+#define DATACOUNT 7
+static float cellheights[4] = {212.0, 250.0, 251, 213};
+@interface ReportformsControllerT ()
+{
+//    int drivelist[6];
+//    int mileagelist[DATACOUNT];
+//    int minlist[DATACOUNT];
+     int badDriverlist[DATACOUNT];
+//    int maxSpeedlist[DATACOUNT];
+    NSDate* lastBeginDate;
+    NSDate* lastEndDate;
+}
+
+@property (nonatomic,strong) NSMutableArray* dateList; //日期list
+@property (nonatomic,strong) NSMutableDictionary* drivedic;
+@property (nonatomic,strong) NSMutableDictionary* mileagedic;
+@property (nonatomic,strong) NSMutableDictionary* mindic; //
+@property (nonatomic,strong) NSMutableDictionary* maxSpeeddic;
+@end
+
+@implementation ReportformsControllerT
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+    [self initData];
+    [self getDateFromWeb:[NSDate date]];
+}
+
+-(void)initData
+{
+    _drivedic = [NSMutableDictionary dictionaryWithCapacity:7];
+    _mileagedic = [NSMutableDictionary dictionaryWithCapacity:7];
+    _mindic = [NSMutableDictionary dictionaryWithCapacity:7];
+    _maxSpeeddic = [NSMutableDictionary dictionaryWithCapacity:7];
+    
+    for (int i =0 ; i<DATACOUNT; i++) {
+        badDriverlist[i]= 0;
+    }
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
+{
+    return 4;
+}
+ -(NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    return 4;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    return 1;
+}
+
+// Row display. Implementers should *always* try to reuse cells by setting each cell's reuseIdentifier and querying for available reusable cells with dequeueReusableCellWithIdentifier:
+// Cell gets various attributes set automatically based on table (separators) and data source (accessory views, editing controls)
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    
+    
+//    if (!cell) {
+//        cell = [[[NSBundle mainBundle]loadNibNamed:@"abstractLogCell" owner:self options:nil]objectAtIndex:0];
+//        [landscapeTableView adjustCell:cell];
+//    }
+    
+    switch (indexPath.section) {
+        case 0:
+        {
+             driveChartCell*  cell = [tableView dequeueReusableCellWithIdentifier:@"cell1"];
+            if (!cell) {
+                cell = [[[NSBundle mainBundle]loadNibNamed:@"driveChartCell" owner:self options:nil]objectAtIndex:0];
+            }
+       
+            NSMutableArray* datearry = [NSMutableArray arrayWithCapacity:7];
+            [_dateList enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
+             {
+                 NSInteger value = [_drivedic[obj] integerValue];
+                 UIColor*  color;
+                 if (value<=60) {
+                     color = [UIColor redColor];
+                 }
+                 else
+                 {
+                     color = [UIColor colorWithRed:.31 green:.67 blue:.05 alpha:1.0];
+                 }
+                 NSDictionary* ns = [NSDictionary dictionaryWithObjectsAndKeys:_drivedic[obj],@"value",obj,@"desc",color,@"color",nil];
+                 [datearry addObject:ns];
+             }];
+   
+            CHARDATARANG a = {0,100};
+            cell.driveChart.rang =a;
+//            [cell.driveChart setChardata:@[ns0, ns1, ns2, ns3, ns4, ns5, ns6]];
+             [cell.driveChart setChardata:datearry];
+            return cell;
+        }
+        case 1:
+        {
+            mileageChartCell*  cell = [tableView dequeueReusableCellWithIdentifier:@"cell2"];
+            if (!cell) {
+                cell = [[[NSBundle mainBundle]loadNibNamed:@"mileageChartCell" owner:self options:nil]objectAtIndex:0];
+
+            }
+            cell.mileageChart.valueMax = 270;
+            UIColor* myblue = [UIColor colorWithRed:.38 green:.87 blue:1 alpha:1.0];
+            UIColor* myoringe = [UIColor colorWithRed:1 green:.75 blue:.5 alpha:1.0];
+            
+            
+            NSMutableArray* datearry = [NSMutableArray arrayWithCapacity:7];
+            [_dateList enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
+             {
+                 NSDictionary* mns = [NSDictionary dictionaryWithObjectsAndKeys:_mileagedic[obj],@"value",obj,@"desc",myblue,@"color", _mindic[obj],@"value2",myoringe,@"color2",nil];
+                 [datearry addObject:mns];
+             }];
+            
+              [cell.mileageChart setChardata:datearry];
+            return cell;
+            
+
+        }
+        case 2:
+        {
+
+            badDriverChartCell*  cell = [tableView dequeueReusableCellWithIdentifier:@"cell3"];
+            if (!cell) {
+                cell = [[[NSBundle mainBundle]loadNibNamed:@"badDriverChartCell" owner:self options:nil]objectAtIndex:0];
+            }
+
+            UIColor* mygreen = [UIColor colorWithRed:.64 green:.937 blue:.41 alpha:1.0];
+            UIColor* myred = [UIColor colorWithRed:1 green:.42 blue:.42 alpha:1.0];
+            UIColor* myoringe = [UIColor colorWithRed:1 green:.75 blue:.5 alpha:1.0];
+            __block UIColor* color;
+            
+            NSMutableArray* datearry = [NSMutableArray arrayWithCapacity:7];
+            NSArray *descAry = @[@"超速",@"急加速",@"急减速",@"急转弯",@"长怠速",@"疲驾"];
+            __block int maxvalue = 10;
+            [descAry enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
+             {
+                 NSInteger value = badDriverlist[idx];
+                 maxvalue = (maxvalue>value)?maxvalue:value;
+                 if(value<=5)
+                     color = mygreen;
+                else if(value>5 && value<=10)
+                    color = myoringe;
+                 else
+                    color = myred;
+                 
+                 NSDictionary* ns = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:badDriverlist[idx]],@"value",descAry[idx],@"desc",color,@"color",nil];
+                 [datearry addObject:ns];
+             }];
+            
+            cell.badDriverChart.valueMax = maxvalue+2;
+            [cell.badDriverChart setChardata:datearry];
+            return cell;
+            
+        }
+        case 3:
+        {
+
+            maxSpeedChartCell*  cell = [tableView dequeueReusableCellWithIdentifier:@"cell4"];
+            if (!cell) {
+                cell = [[[NSBundle mainBundle]loadNibNamed:@"maxSpeedChartCell" owner:self options:nil]objectAtIndex:0];
+
+            }
+            CHARDATARANG a = {0,270};
+            cell.maxSpeedChart.rang =a;
+            
+            NSMutableArray* datearry = [NSMutableArray arrayWithCapacity:7];
+            [_dateList enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
+             {
+                 NSInteger value = [_maxSpeeddic[obj] integerValue];
+                 UIColor*  color;
+                 if (value>=100) {
+                     color = [UIColor redColor];
+                 }
+                 else
+                 {
+                     color = [UIColor colorWithRed:.31 green:.67 blue:.05 alpha:1.0];
+                 }
+                 NSDictionary* ns = [NSDictionary dictionaryWithObjectsAndKeys:_maxSpeeddic[obj],@"value",obj,@"desc",color,@"color",nil];
+                 [datearry addObject:ns];
+             }];
+
+            
+            [cell.maxSpeedChart setChardata:datearry];
+            return cell;
+            
+
+        }
+        default:
+            return nil;
+    }
+    
+}
+
+//因为已经旋转过，所以高其实是宽
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+//    UITableViewCell* cell = [self tableView:tableView cellForRowAtIndexPath:indexPath];
+//    return cell.frame.size.height;
+    return cellheights[indexPath.section];
+//    NSLog(@"cell.frame.size.height = %f class = %@",cell.contentView.frame.size.height, [cell class]);
+    //;
+//    return cellHeight[indexPath.row];
+}
+
+- (void)tableView:(UITableView *)tableView didEndDisplayingCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath*)indexPath
+{
+    switch (indexPath.section) {
+        case 0:
+        {
+
+            driveChartCell* celltemp = (driveChartCell*)cell;
+            [celltemp.driveChart endstrokeChart];
+        }
+         break;
+        case 1:
+        {
+            mileageChartCell* celltemp = (mileageChartCell*)cell;
+            [celltemp.mileageChart endstrokeChart];
+
+        }
+        break;
+        case 2:
+        {
+            badDriverChartCell* celltemp = (badDriverChartCell*)cell;
+            [celltemp.badDriverChart endstrokeChart];
+        }
+        break;
+        case 3:
+        {
+            maxSpeedChartCell* celltemp = (maxSpeedChartCell*)cell;
+            [celltemp.maxSpeedChart endstrokeChart];
+        }
+        break;
+    }
+
+}
+
+-(NSMutableArray*)getDateArry:(NSDate*)startDate
+{
+    NSDateComponents *compt = [[NSDateComponents alloc] init];
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+
+//    NSString* strbeginDate = [dateFormat stringFromDate:startDate];
+//    NSString* strendDate = [dateFormat stringFromDate:endDate];
+    
+    NSMutableArray *dateList = [NSMutableArray arrayWithCapacity:DATACOUNT];
+    for (int i = DATESPAN; i>=0; --i) {
+        [compt setDay:-i];
+        NSDate *endDate = [calendar dateByAddingComponents:compt toDate:startDate options:NSCalendarSearchBackwards];
+        NSDateFormatter *dateFormat = [[NSDateFormatter alloc] init];
+        [dateFormat setDateFormat:@"M月d日"];
+        [dateList addObject:[dateFormat stringFromDate:endDate]];
+    }
+    return dateList;
+}
+
+-(void)getDateFromWeb:(NSDate*)startDate
+{
+    NSDateComponents *compt = [[NSDateComponents alloc] init];
+    [compt setDay:-DATESPAN];
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    __block NSDate *endDate = [calendar dateByAddingComponents:compt toDate:startDate options:NSCalendarSearchBackwards];
+    NSDateFormatter *dateFormat = [[NSDateFormatter alloc] init];
+    [dateFormat setDateFormat:@"yyyy-MM-dd"];
+    NSString* strbeginDate = [dateFormat stringFromDate:endDate];
+    NSString* strendDate = [dateFormat stringFromDate:startDate];
+    
+    _dateList = [self getDateArry:startDate];
+    //设置title
+    self.dataView.text = [NSString  stringWithFormat:@"%@-%@",_dateList.firstObject,_dateList.lastObject];
+    [_dateList enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
+     {
+         [_mileagedic setObject:[NSNumber numberWithInt:0] forKey:obj];
+         [_mindic setObject:[NSNumber numberWithInt:0] forKey:obj];
+         [_maxSpeeddic setObject:[NSNumber numberWithInt:0] forKey:obj];
+         [_drivedic setObject:[NSNumber numberWithInt:0] forKey:obj];
+     }];
+    
+    lastBeginDate = endDate;
+    lastEndDate   = startDate;
+    
+    [self showLoadingHUB:@"正在加载"];
+    [[AFJsonAPIClient sharedClient] getDriveScore:strbeginDate endDate:strendDate complete:^(NSDictionary *RspondDate, NSError *error){
+        if (!error) {
+            if (RspondDate) {
+                NSArray* list = [RspondDate objectForKey:@"list"];
+                
+                    [list enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop)
+                    {
+                        NSDictionary* dateojb = (NSDictionary*)obj;
+                        
+                        NSString* datestr = [dateojb objectForKey:@"driveDateStr"];
+                        NSDateFormatter* dateFormatter = [[NSDateFormatter alloc]init];
+                        [dateFormatter setDateFormat:@"yyyy-MM-dd"];
+                        NSDate*  destDate = [dateFormatter dateFromString:datestr];
+                        NSDateFormatter *dateFormat2 = [[NSDateFormatter alloc] init];
+                        [dateFormat2 setDateFormat:@"M月d日"];
+                        datestr = [dateFormat2 stringFromDate:destDate];
+                        
+                        int score = [[dateojb objectForKey:@"score"] intValue];
+                        [_drivedic setObject:[NSNumber numberWithInt:score] forKey:datestr];
+                        //
+                        //超速
+                        badDriverlist[0] += [[dateojb objectForKey:@"speedtimes"] intValue];
+                        //急加速
+                        badDriverlist[1] += [[dateojb objectForKey:@"acceltimes"] intValue];
+                        //急减速
+                        badDriverlist[2] += [[dateojb objectForKey:@"braketimes"] intValue];
+                        //急转弯
+                        badDriverlist[3] += [[dateojb objectForKey:@"turntimes"] intValue];
+                        //长怠速
+                        badDriverlist[4] += [[dateojb objectForKey:@"longIding"] intValue];
+                        //疲驾
+                        badDriverlist[5] += [[dateojb objectForKey:@"tiredDrive"] intValue];
+                        
+                        /////
+                        int mileage  = [[dateojb objectForKey:@"mileage"] intValue];
+                        [_mileagedic setObject:[NSNumber numberWithInt:mileage] forKey:datestr];
+                        int min      = [[dateojb objectForKey:@"onlineTime"] intValue];
+                        [_mindic setObject:[NSNumber numberWithInt:min] forKey:datestr];
+                        int maxSpeed = [[dateojb objectForKey:@"maxSpeed"] intValue];
+                        [_maxSpeeddic setObject:[NSNumber numberWithInt:maxSpeed] forKey:datestr];
+                        
+                    }];
+                [self.tableView reloadData];
+                
+            }
+            [self hideHUD];
+        }
+        else
+        {
+            [self showHUB:@"加载失败"];
+        }
+
+    }];
+}
+- (IBAction)preLogClick:(id)sender {
+    
+    NSDateComponents *compt = [[NSDateComponents alloc] init];
+    [compt setDay:-1];
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDate *endDate = [calendar dateByAddingComponents:compt toDate:lastBeginDate options:NSCalendarSearchBackwards];
+    [self getDateFromWeb:endDate];
+}
+
+- (IBAction)nextLogClick:(id)sender {
+    NSDateComponents *compt = [[NSDateComponents alloc] init];
+    [compt setDay:7];
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDate *endDate = [calendar dateByAddingComponents:compt toDate:lastEndDate options:NSCalendarSearchBackwards];
+    [self getDateFromWeb:endDate];
+    
+}
+@end

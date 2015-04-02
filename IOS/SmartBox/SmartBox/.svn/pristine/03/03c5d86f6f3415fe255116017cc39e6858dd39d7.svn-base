@@ -1,0 +1,203 @@
+//
+//  AFJsonAPIClient.m
+//  Smartbox
+//
+//  Created by Mesada on 15/1/16.
+//  Copyright (c) 2015年 mesada. All rights reserved.
+//
+
+#import "AFJsonAPIClient.h"
+#import "httpRequestDef.h"
+
+@implementation AFJsonPortAPIClient
+//发送请求
++ (instancetype)sharedClient {
+    static AFJsonPortAPIClient *_sharedClient = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _sharedClient = [[AFJsonPortAPIClient alloc] initWithBaseURL:[NSURL URLWithString:AppBasePortURLString]];
+        _sharedClient.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
+        _sharedClient.responseSerializer = [AFJSONResponseSerializer serializer];
+    });
+    
+    return _sharedClient;
+}
+@end
+
+@implementation AFJsonTsiAPIClient
+//发送请求
++ (instancetype)sharedClient {
+    static AFJsonTsiAPIClient *_sharedClient = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _sharedClient = [[AFJsonTsiAPIClient alloc] initWithBaseURL:[NSURL URLWithString:AppBaseURLString]];
+        _sharedClient.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
+        _sharedClient.responseSerializer = [AFJSONResponseSerializer serializer];
+    });
+    
+    return _sharedClient;
+}
+@end
+
+@implementation AFJsonAPIClient
++ (instancetype)sharedClient {
+    static AFJsonAPIClient *_sharedClient = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _sharedClient = [[AFJsonAPIClient alloc]init];
+    });
+    
+    return _sharedClient;
+}
+
+-(NSURLSessionDataTask*)httpRequest_handel:(NSString *)URLString parameters:params  complete:(void (^)(NSDictionary *DriveRecord, NSError *error))block
+{
+    return [self httpRequest_base_handel:nil URL:URLString parameters:params complete:block];
+}
+
+-(NSURLSessionDataTask*)httpRequest_base_handel:(AFHTTPSessionManager*)httPSession URL:(NSString *)URLString parameters:params  complete:(void (^)(NSDictionary *DriveRecord, NSError *error))block
+{
+    AFHTTPSessionManager* AFPhttPSession = httPSession;
+    if(!AFPhttPSession)
+    {
+        AFPhttPSession = [AFJsonTsiAPIClient sharedClient];
+    }
+    
+    return [AFPhttPSession POST:URLString parameters:params success:^(NSURLSessionDataTask * __unused task, id jsonObj) {
+        
+        NSDictionary *jsonDate  = (NSDictionary*)jsonObj;
+        NSLog(@"json =%@",[jsonDate class]);
+        
+        NSLog(@"ismainThread %d",[NSThread isMainThread]);
+        
+        
+        if (jsonDate) {
+            NSNumber* errCode = [[jsonDate valueForKey:@"result"] valueForKey:@"errCode"];
+            if (errCode) {
+                int nerrCode = [errCode intValue];
+                if (nerrCode != 0) {
+                    return  block(nil, [[NSError alloc]initWithDomain:@"获取失败" code:[errCode intValue]  userInfo:nil]);
+                    
+                }
+            }
+        }
+        
+        
+        NSDictionary *dateDic = jsonDate;
+        if (dateDic) {
+            if (block) {
+                return  block([NSDictionary dictionaryWithDictionary:dateDic], nil);
+            }
+        }
+        
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block(nil, error);
+            NSLog(@"%@",error);
+        }
+    }];
+}
+
+
+//获取行驶统计
+-(NSURLSessionDataTask*)getDrivingCount:(NSString*)strbeginTime endTime:(NSString*)strendTime complete:(void (^)(NSDictionary *drivingCount, NSError *error))block
+{
+    //debug bobo
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:strbeginTime  forKey:@"beginTime"];
+    [params setObject:strendTime  forKey:@"endTime"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/statisticsApi/getDrivingCount" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    
+    //
+    //
+    //
+    return [[AFJsonTsiAPIClient sharedClient] POST:@"tsi/api/httpUtilsApi/commonPost?" parameters:params success:^(NSURLSessionDataTask * __unused task, id jsonObj) {
+        
+        NSDictionary *jsonDate  = (NSDictionary*)jsonObj;
+        NSLog(@"json =%@",[jsonDate class]);
+        
+        NSLog(@"ismainThread %d",[NSThread isMainThread]);
+        
+        NSDictionary * resultDate =  [jsonDate valueForKey:@"drivingCount"];
+        
+        if (resultDate) {
+            NSNumber* errCode = [resultDate valueForKey:@"errCode"];
+            if (errCode) {
+                int nerrCode = [errCode intValue];
+                if (nerrCode != 0) {
+                    block(nil, [[NSError alloc]initWithDomain:@"获取失败" code:[errCode intValue]  userInfo:nil]);
+                    return;
+                }
+            }
+        }
+        
+        
+        NSDictionary *dateDic = [jsonDate valueForKey:@"drivingCount"];
+        if (dateDic) {
+            if (block) {
+                block([NSDictionary dictionaryWithDictionary:dateDic], nil);
+            }
+        }
+        
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block(nil, error);
+            NSLog(@"%@",error);
+        }
+    }];
+    
+}
+
+
+-(NSURLSessionDataTask*)getDriveScore:(NSString*)strBeginDate endDate:(NSString*)strEndDate complete:(void (^)(NSDictionary *RspondDate, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:strBeginDate  forKey:@"beginTime"];
+    [params setObject:strEndDate  forKey:@"endTime"];
+    [params setObject:timeString  forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/statisticsApi/getDriveScore" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+  
+    return [self httpRequest_handel:UTILSAPI parameters:params complete:block];
+}
+
+
+-(NSURLSessionDataTask*)RequsetRoadhelp:(NSDictionary*)paramsDic complete:(void (^)(NSDictionary *repondData, NSError *error))block;
+{
+    NSString *useridString = [LoginManager sharedInstance].userId;
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"roadHelp.userId"];
+    [params setObject: paramsDic[@"mobile"]  forKey:@"roadHelp.mobile"];
+    [params setObject: paramsDic[@"latitude"] forKey:@"roadHelp.latitude"];
+    [params setObject: paramsDic[@"longitude"] forKey:@"roadHelp.longitude"];
+    [params setObject: paramsDic[@"helpType"] forKey:@"roadHelp.helpType"];
+    [params setObject: paramsDic[@"requestTime"] forKey:@"roadHelp.requestTime"];
+    [params setObject: @"2" forKey:@"roadHelp.requestFrom"];
+    
+    return [self httpRequest_base_handel:[AFJsonPortAPIClient sharedClient] URL:@"agent/interface/roadHelp_roadHelp4Mobile.action" parameters:params complete:block];
+}
+
+@end

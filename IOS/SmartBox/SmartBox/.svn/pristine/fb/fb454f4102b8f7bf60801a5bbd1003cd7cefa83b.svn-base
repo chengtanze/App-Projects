@@ -1,0 +1,31 @@
+//
+//  AFJsonAPIClient.h
+//  Smartbox
+//
+//  Created by Mesada on 15/1/16.
+//  Copyright (c) 2015年 mesada. All rights reserved.
+//
+
+//返回值为json的协议
+#import "AFHTTPSessionManager.h"
+
+@interface AFJsonAPIClient : NSObject
++ (instancetype)sharedClient;
+//获取行驶统计
+-(NSURLSessionDataTask*)getDrivingCount:(NSString*)strbeginTime endTime:(NSString*)strendTime complete:(void (^)(NSDictionary *RspondDate, NSError *error))block;
+//获取时间统计
+-(NSURLSessionDataTask*)getDriveScore:(NSString*)strBeginDate endDate:(NSString*)strEndDate complete:(void (^)(NSDictionary *RspondDate, NSError *error))block;
+
+//道路救援请求
+-(NSURLSessionDataTask*)RequsetRoadhelp:(NSDictionary*)paramsDic complete:(void (^)(NSDictionary *repondData, NSError *error))block;
+@end
+
+@interface AFJsonPortAPIClient : AFHTTPSessionManager
+//发送请求
++ (instancetype)sharedClient;
+@end
+
+@interface AFJsonTsiAPIClient : AFHTTPSessionManager
+//发送请求
++ (instancetype)sharedClient;
+@end

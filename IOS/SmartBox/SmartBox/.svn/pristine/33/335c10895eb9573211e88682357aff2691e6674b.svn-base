@@ -1,0 +1,418 @@
+//
+//  LoginViewController.m
+//  Smartbox
+//
+//  Created by Mesada on 14/11/12.
+//  Copyright (c) 2014年 mesada. All rights reserved.
+//
+
+#import "LoginViewController.h"
+#import "LoginManager.h"
+#import "PublicFunction.h"
+#import "TheTCPClient.h"
+
+@interface LoginViewController (){
+    UITextField* activeField;
+    CGFloat keyboardHeight;
+}
+
+@end
+
+@implementation LoginViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+    _staticView1.layer.borderColor =  [[UIColor colorWithRed:0.63 green:0.63 blue:0.63 alpha:1.0] CGColor];
+    _staticView2.layer.borderColor =  [[UIColor colorWithRed:0.63 green:0.63 blue:0.63 alpha:1.0] CGColor];
+#ifdef debugbobo
+#ifdef test
+    _txtUserNameView.text = @"763246";//
+    _txtPwdView.text = @"88888888";
+#else
+    _txtUserNameView.text = @"924886";//
+    _txtPwdView.text = @"849366";
+//    _txtUserNameView.text = @"924887";//
+//    _txtPwdView.text = @"052910";
+#endif
+#endif
+    isSavePwd = YES;
+    self.automaticallyAdjustsScrollViewInsets = NO;
+}
+
+-(void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    self.navigationController.NavigationBarHidden = TRUE;
+    [self registerForKeyboardNotifications];
+    
+}
+
+-(void)viewDidDisappear:(BOOL)animated
+{
+    [super viewDidDisappear:animated];
+    [self removeRegisterForkeyboardNotifications];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (void)registerForKeyboardNotifications
+
+{
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+     
+                                             selector:@selector(keyboardWasShown:)
+     
+                                                 name:UIKeyboardWillShowNotification object:nil];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+     
+                                             selector:@selector(keyboardWillBeHidden:)
+     
+                                                 name:UIKeyboardWillHideNotification object:nil];
+    
+}
+
+-(void)removeRegisterForkeyboardNotifications
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
+}
+
+
+- (void)keyboardWasShown:(NSNotification*)aNotification
+
+{
+    NSDictionary* info = [aNotification userInfo];
+    
+    CGSize kbSize = [[info objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue].size;
+    
+    UIEdgeInsets contentInsets = UIEdgeInsetsMake(0.0, 0.0, kbSize.height, 0.0);
+    
+    _backScrollView.contentInset = contentInsets;
+    
+    _backScrollView.scrollIndicatorInsets = contentInsets;
+    
+    // If active text field is hidden by keyboard, scroll it so it's visible
+    
+    // Your application might not need or want this behavior.
+    
+    CGRect aRect = self.view.frame;
+    
+    keyboardHeight = kbSize.height;
+    //    NSLog(@"keyboardHeight = [%f]",keyboardHeight);
+    aRect.size.height -= kbSize.height;
+    
+    
+    CGPoint absolutePoint = [activeField convertPoint:CGPointMake(0, activeField.frame.size.height) toView:self.view];
+    //    NSLog(@"x=%f，y=%f offset=%f", absolutePoint.x,absolutePoint.y,_backScrollView.contentOffset.y);
+    
+    if (!CGRectContainsPoint(aRect, absolutePoint/*activeField.frame.origin*/) ) {
+        
+        CGFloat BottomPointY  = absolutePoint.y-(screenHeight - kbSize.height)+10;
+        
+        CGPoint scrollPoint = CGPointMake(0.0, BottomPointY);
+        NSLog(@"offset=%f", BottomPointY);
+        [_backScrollView setContentOffset:scrollPoint animated:YES];
+        
+    }
+    
+}
+
+// Called when the UIKeyboardWillHideNotification is sent
+
+- (void)keyboardWillBeHidden:(NSNotification*)aNotification
+
+{
+    [_backScrollView setContentOffset:CGPointMake(0, 0) animated:YES];
+}
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+- (IBAction)loginClick:(id)sender {
+    [self willGoLogin];
+}
+
+- (void)willGoLogin
+{
+    [LoginManager sharedInstance].type = 3;
+    [_txtUserNameView resignFirstResponder];
+    [_txtPwdView resignFirstResponder];
+    
+    
+    //    txtPWD.text = @"888888";
+    //    txtUserName.text = @"29720";
+    
+    NSString* tipString = nil;
+    NSString* strUserName = [_txtUserNameView.text stringByReplacingOccurrencesOfString:@" " withString:@""];
+    
+    while (YES) {
+        if (_txtUserNameView.text.length == 0 && _txtPwdView.text.length == 0) {
+            tipString = @"请输入帐号和密码";
+            break;
+        } else if (_txtUserNameView.text.length == 0){
+            tipString =  @"请输入帐号";
+            break;
+        } else if(_txtPwdView.text.length == 0){
+            tipString =  @"请输入密码";
+            break;
+        }
+        
+        //判断是什么形式登录
+        if (![PublicFunction isNumber:strUserName]) {
+            if (![PublicFunction isEmail:strUserName]) {
+                //邮箱格式错误
+                tipString =  @"请使用车友号或者邮箱帐号登录\n请重新输入";
+                break;
+            } else {
+                [LoginManager sharedInstance].loginType = LoginByEmail;
+                [LoginManager sharedInstance].eMail = strUserName;
+            }
+        } else if (strUserName.length == 11) {
+            if ([PublicFunction isPhoneNum:strUserName]) {
+                [LoginManager sharedInstance].loginType = LoginByPhoneNum; //帐号登录
+                [LoginManager sharedInstance].phoneNum = strUserName;
+            } else {
+                //手机号码错误.
+                tipString =  @"请使用手机号登录\n请重新输入";
+                break;
+            }
+        } else {//使用ID帐号登录
+            [LoginManager sharedInstance].loginType = LoginByID;
+            [LoginManager sharedInstance].userId = strUserName;
+        }
+        
+        [LoginManager sharedInstance].userPwd = [_txtPwdView.text stringByReplacingOccurrencesOfString:@" " withString:@""];
+        //        [self ButtonEnabled:NO];
+        
+        [_txtUserNameView resignFirstResponder];
+        [_txtPwdView resignFirstResponder];
+        
+        //do login action
+        //重置网络连接
+        
+        
+        [self doLoginAction];
+        return;
+    }
+    
+    UIAlertView* tip = [[UIAlertView alloc] initWithTitle:@"提示" message:tipString
+                                                  delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    [tip show];
+}
+
+
+- (void)doLoginAction
+{
+    HUD = [MBProgressHUD showHUDAddedTo:self.view animated:YES];
+    HUD.labelText =  @"正在登录...";
+    [HUD show:YES];
+    
+    [[TheTCPClient getInstance] reset];
+    [[LoginManager sharedInstance] doLoginAction:self];
+}
+
+
+#pragma mark LoginDelegate-->> 登录成功,失败返回信息
+- (void) theUserDidLogin:(BOOL)success andUserInfo:(User_assist *)user andErrorString:(NSString*)theError
+{
+    //    [self ButtonEnabled:YES];
+    if (success) {
+        NSLog(@"登录成功。");
+        [LoginManager sharedInstance].userId = [NSString stringWithFormat:@"%@",user.id];
+        //        [LoginManager sharedInstance].loginDelegate = self;
+        //        [[LoginManager sharedInstance] isFinishedUserInfo];
+        
+        NSUserDefaults* theUserDefaults = [NSUserDefaults standardUserDefaults];
+        if (isSavePwd) {
+            [theUserDefaults setObject:[NSNumber numberWithBool:isSavePwd] forKey:RememberPasswdState];
+        }
+        BOOL tempIsSavePwd = [theUserDefaults boolForKey:RememberPasswdState];
+        NSString *theUserName = [_txtUserNameView.text stringByReplacingOccurrencesOfString:@" " withString:@""];
+        if (!theUserName.length>0) {
+            _txtUserNameView.text = [LoginManager sharedInstance].userId;
+        }
+        if (tempIsSavePwd) {
+            _txtPwdView.text = [LoginManager sharedInstance].userPwd;
+        }
+        [theUserDefaults setObject:[LoginManager sharedInstance].userPwd forKey:LastUserPassword];
+        [theUserDefaults setObject:[NSNumber numberWithInt:1] forKey:LastUserLoginState];//记录登录状态  0:没登录  1 登录
+        [theUserDefaults setObject:[LoginManager sharedInstance].userId forKey:LastUserID];
+        
+//        NSDictionary *loginInfoDic = [NSDictionary dictionaryWithObjectsAndKeys:@"LoginStatus",@"Successed", self.pluginName, @"pluginName", nil];
+        [[NSNotificationCenter defaultCenter] postNotificationName:LoginSuccessed_Notification object:nil userInfo:nil];
+    } else {
+        //登录失败，提示用户。
+        NSLog(@"登录失败。");
+        HUD.hidden=YES;
+        [[LoginManager sharedInstance] resetLoginManager];
+        UIAlertView* tip = [[UIAlertView alloc] initWithTitle:@"登录失败" message:theError
+                                                      delegate:nil cancelButtonTitle:@"确定" otherButtonTitles:nil];
+        [tip show];
+    }
+}
+
+//tcp 登录返回的基本信息
+//检查用户基本资料是否完成时失败。让用户重新登录，重新获取。否则用户登录成功进去应用后资料不完整。
+- (void)getUserInfofailed
+{
+    HUD.hidden = YES;
+    UIAlertView* tip = [[UIAlertView alloc] initWithTitle:@"登录失败"
+                                                  message:@"获取个人资料失败."
+                                                 delegate:self
+                                        cancelButtonTitle:@"取消"
+                                        otherButtonTitles:@"重试",nil];
+    tip.tag = 888;
+    [tip show];
+}
+
+//tcp 登录返回的基本信息
+//检查用户基本资料是否完成代理
+- (void)isFinishedUserInfo:(UserBaseInfo *)userBaseInfo andErrorString:(NSString *)theError
+{
+    HUD.hidden = YES;
+//    [self ButtonEnabled:YES];
+    
+    NSString *figureurl = userBaseInfo.figureurl;
+    NSInteger sex = [userBaseInfo.sex integerValue];
+    NSString  *nick = userBaseInfo.nickname;
+    NSString  *signName = userBaseInfo.signtext;
+    NSInteger count = 0;
+    if (figureurl.length>0) {
+        count++;
+        if ([figureurl rangeOfString:@"http://"].location == NSNotFound) {
+            [LoginManager sharedInstance].iconUrl = [NSString stringWithFormat:@"%@%@%@",FileServPrefix,FileMiddleUri,figureurl];;
+        } else {
+            NSLog(@"count  == [%d]",[figureurl componentsSeparatedByString:@"http://"].count);
+            NSArray *figureurlArry = [figureurl componentsSeparatedByString:@"http://"];
+            if (figureurlArry.count == 3) {
+                NSLog(@"url = [%@]",[figureurlArry objectAtIndex:2]);
+                [LoginManager sharedInstance].iconUrl = [NSString stringWithFormat:@"http://%@",[figureurlArry objectAtIndex:2]];
+            } else {
+                [LoginManager sharedInstance].iconUrl = figureurl;
+            }
+        }
+        [LoginManager sharedInstance].iconUrl = figureurl;
+    } else {
+        [LoginManager sharedInstance].iconUrl = nil;
+    }
+    if (sex==0||sex==1) {
+        count ++;
+        [LoginManager sharedInstance].sex = sex;
+    } else {
+        [LoginManager sharedInstance].sex = 2;
+    }
+    if (nick.length>0) {
+        count ++;
+        [LoginManager sharedInstance].nick = nick;
+    } else {
+        [LoginManager sharedInstance].nick = nil;
+    }
+    if (signName.length>0) {
+        count ++;
+        [LoginManager sharedInstance].signName = signName;
+    } else {
+        [LoginManager sharedInstance].signName = nil;
+    }
+
+    NSLog(@"登录并资料已经完善");
+    [LoginManager sharedInstance].isFinishedInfo = YES;
+    
+    if (_toViewCtr) {
+     NSLog(@"123:%@",[UIApplication sharedApplication].keyWindow.rootViewController);
+        [self dismissViewControllerAnimated:YES completion:^{}];
+        [self presentViewController:_toViewCtr animated:TRUE completion:^{}];
+        
+        NSLog(@"456:%@",[UIApplication sharedApplication].keyWindow.rootViewController);
+
+        //[UIApplication sharedApplication].keyWindow.rootViewController = _toViewCtr;
+        //[[LoginManager sharedInstance].pushViewCtr.navigationController pushViewController:[LoginManager sharedInstance].toViewCtr animated:YES];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:^{
+        }];
+    }
+
+}
+
+
+- (IBAction)saverPwd:(id)sender {
+    
+    isSavePwd = !isSavePwd;
+    [[NSUserDefaults standardUserDefaults] setObject:[NSNumber numberWithBool:isSavePwd] forKey:RememberPasswdState];
+    if (isSavePwd) {
+        [_savePwdView setImage:[UIImage imageNamed:@"1-SMART-BOX-登录_单选-on.png"] forState:UIControlStateNormal];
+    } else {
+        [_savePwdView setImage:[UIImage imageNamed:@"1-SMART-BOX-登录_单选-off.png"] forState:UIControlStateNormal];
+    }
+}
+
+- (IBAction)handelTap:(UITapGestureRecognizer *)sender {
+    [activeField resignFirstResponder];
+}
+
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    if (textField == _txtUserNameView) {
+        [_txtPwdView becomeFirstResponder];
+        [self performSelector:@selector(moveUp) withObject:nil afterDelay:0.1];
+        return NO;
+    }
+    
+    return [activeField resignFirstResponder];
+}
+
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField
+
+{
+    
+    activeField = textField;
+    NSLog(@"activeField=%@",activeField);
+    
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
+    activeField = nil;
+    
+}
+
+-(void) moveUp
+{
+    UIEdgeInsets contentInsets = UIEdgeInsetsMake(0.0, 0.0, keyboardHeight, 0.0);
+    
+    _backScrollView.contentInset = contentInsets;
+    
+    _backScrollView.scrollIndicatorInsets = contentInsets;
+    
+    CGRect aRect = self.view.frame;
+    
+    aRect.size.height -= keyboardHeight;
+    
+    CGPoint absolutePoint = [activeField convertPoint:CGPointMake(0, activeField.frame.size.height) toView:self.view];
+    NSLog(@"x=%f，y=%f offset=%f", absolutePoint.x,absolutePoint.y,_backScrollView.contentOffset.y);
+    
+    if (!CGRectContainsPoint(aRect, absolutePoint/*activeField.frame.origin*/) ) {
+        
+        CGFloat BottomPointY  = absolutePoint.y-(screenHeight - keyboardHeight)+10;
+        
+        CGPoint scrollPoint = CGPointMake(0.0, BottomPointY);
+        NSLog(@"offset=%f", BottomPointY);
+        [_backScrollView setContentOffset:scrollPoint animated:YES];
+        
+    }
+}
+@end

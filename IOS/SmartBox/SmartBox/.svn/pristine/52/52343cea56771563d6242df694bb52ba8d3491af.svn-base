@@ -1,0 +1,226 @@
+//
+//  PNBarChart.m
+//  PNChartDemo
+//
+//  Created by kevin on 11/7/13.
+//  Copyright (c) 2013年 kevinzhow. All rights reserved.
+//
+
+#import "PNDBarChart.h"
+//#import "PNColor.h"
+//#import "PNChartLabel.h"
+#import "PNBar.h"
+
+#define TOPEDGE     20.0
+#define BOTTOMEDGE  5.0
+#define EDGE        0.0
+#define CHARDIALHEIGHT 40.0
+
+#define UPCHARRATIO 0.6
+
+@implementation PNDBarChart
+
+- (id)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        // Initialization code
+        self.backgroundColor = [UIColor clearColor];
+        self.clipsToBounds = YES;
+        _valueMax= 100;
+        
+        _chardial = [CAShapeLayer layer];
+        _chardial.backgroundColor = [[UIColor clearColor]CGColor];
+        _chardial.lineCap = kCALineCapSquare;
+        _chardial.fillColor = [[UIColor grayColor] CGColor];
+        _chardial.strokeColor = [[UIColor grayColor] CGColor];
+        
+        _chardial.lineWidth   = 0.5;
+        _chardial.strokeEnd   = 0.0;
+        _chardial.lineJoin    = kCALineJoinBevel;
+        _chardial.frame       = self.bounds;
+        [self.layer addSublayer:_chardial];
+        //[self strokeChardial];
+        
+    }
+    
+    return self;
+}
+
+- (id)initWithCoder:(NSCoder *)aDecoder
+{
+    self = [super initWithCoder:aDecoder];
+    if (self) {
+        // Initialization code
+        self.backgroundColor = [UIColor clearColor];
+        self.clipsToBounds = YES;
+        _valueMax= 100;
+        
+        _chardial = [CAShapeLayer layer];
+        _chardial.backgroundColor = [[UIColor clearColor]CGColor];
+        _chardial.lineCap = kCALineCapSquare;
+        _chardial.fillColor = [[UIColor grayColor] CGColor];
+        _chardial.strokeColor = [[UIColor grayColor] CGColor];
+        
+        _chardial.lineWidth   = 0.5;
+        _chardial.strokeEnd   = 0.0;
+        _chardial.lineJoin    = kCALineJoinBevel;
+        _chardial.frame       = self.bounds;
+        [self.layer addSublayer:_chardial];
+        //[self strokeChardial];
+        
+    }
+    
+    return self;
+    
+}
+
+-(void)dealloc
+{
+    NSLog(@"PNDbarChart dealloc");
+    [_chardial removeAllAnimations];
+}
+
+-(void)setChardata:(NSArray *)data
+{
+    _chardata = data;
+    [self strokeChardial];
+    [self strokeChart];
+}
+
+
+-(void)setStrokeColor:(UIColor *)strokeColor
+{
+    _strokeColor = strokeColor;
+}
+
+-(void)strokeChart
+{
+    NSInteger count =  _chardata.count;
+    CGFloat  spacing = self.frame.size.width/count;
+    CGFloat ptx = 0.0;
+    int index = 0;
+    CGFloat chartCavanHeight = self.frame.size.height -TOPEDGE - BOTTOMEDGE - CHARDIALHEIGHT-8;
+    CGFloat UpchartCavanHeight = chartCavanHeight*UPCHARRATIO;
+    CGFloat pty = TOPEDGE;
+    
+    for (NSDictionary * valuedic in _chardata) {
+        NSNumber* value = [valuedic objectForKey:@"value"];
+        
+        float grade = (float)[value integerValue] /_valueMax;
+        if (index== 0) {
+            ptx = spacing*0.8;//*0.8是第一条竖线调整系数
+        }
+        else{
+            ptx += spacing; //中间点
+        }
+        
+        PNBar * bar = [[PNBar alloc] initWithFrame:CGRectMake(ptx-spacing*1/3,pty,spacing*.6,UpchartCavanHeight)];
+        UIColor* colorvalue = [valuedic objectForKey:@"color"];
+        bar.type = UPTYPE;
+        bar.barColor = colorvalue;
+        bar.strValue = [self removeEscapeFrom:[NSString stringWithFormat:@"%ld", (long)[value integerValue]] ];
+        bar.grade = grade;
+        
+        [self addSubview:bar];
+        /////
+//        
+        NSNumber* value2 = [valuedic objectForKey:@"value"];
+        
+        float grade2 = (float)[value2 integerValue] /_valueMax;
+        
+        PNBar * bar2 = [[PNBar alloc] initWithFrame:CGRectMake(ptx-spacing*1/3,pty+UpchartCavanHeight+2,spacing*.6,chartCavanHeight-UpchartCavanHeight)];
+        UIColor* colorvalue2 = [valuedic objectForKey:@"color2"];
+        bar2.type = DWONTYPE;
+        bar2.barColor = colorvalue2;
+        bar2.strValue = [self removeEscapeFrom:[NSString stringWithFormat:@"%ld", (long)[value2 integerValue]] ];
+        bar2.grade = grade2;
+        
+        [self addSubview:bar2];
+        
+        index += 1;
+    }
+}
+
+
+-(void) strokeChardial
+{
+    UIBezierPath *progressline = [UIBezierPath bezierPath];
+    
+    CGFloat ypt = self.frame.size.height-CHARDIALHEIGHT - BOTTOMEDGE;
+    CGFloat xrpt = self.frame.size.width - 2*EDGE;
+    [progressline moveToPoint:CGPointMake(EDGE, ypt)];
+    [progressline addLineToPoint:CGPointMake(xrpt, ypt)];
+    
+    NSInteger count =  _chardata.count;
+    CGFloat  spacing = self.frame.size.width/count;
+    //n端竖线
+    
+    CGFloat ptx=0;
+    CGFloat pty=0;
+    for (int index = 0; index < count; index++) {
+        
+        pty = ypt+8;
+        if (index== 0) {
+            ptx = spacing*0.8;//*0.8是第一条竖线调整系数
+        }
+        else{
+            ptx += spacing;
+        }
+        [progressline moveToPoint:CGPointMake(ptx, ypt)];
+        [progressline addLineToPoint:CGPointMake(ptx, pty)];
+        //加上xlabel
+        
+        UILabel * label = [[UILabel alloc] initWithFrame:CGRectMake(ptx-spacing, pty,spacing,14.0)];
+        
+        [label setFont:[UIFont systemFontOfSize:10]];
+        [label setTextAlignment:NSTextAlignmentRight];
+        label.textColor = [UIColor darkGrayColor];
+        label.text = [[_chardata objectAtIndex:index]objectForKey:@"desc"];;
+        CGRect oldframe = label.frame;
+        [label.layer setAnchorPoint:CGPointMake(1, 0)];
+        label.frame = oldframe;
+        label.transform = CGAffineTransformMakeRotation((-30.0f * M_PI) / 180.0f);
+        //        [label.layer setAnchorPoint:CGPointMake(0.5, 0.5)];
+        
+        [self addSubview:label];
+    }
+    
+    
+    _chardial.path = progressline.CGPath;
+    _chardial.strokeEnd   = 1.0;
+    
+}
+
+-(NSString *)removeEscapeFrom:(NSString *)string
+{
+    if ([string rangeOfString:@"\\n"].length > 0)
+    {
+        return [[string componentsSeparatedByString:@"\\n"] componentsJoinedByString:@"\r\n"];
+    }else
+    {
+        return string;
+    }
+}
+
+
+-(void)endstrokeChart
+{
+    [_chardial removeAllAnimations];
+    
+    for (UIView *view in self.subviews)
+    {
+        if ([view isKindOfClass:[UIView class]])
+        {
+            NSLog(@"%@",[view class]);
+            [view removeFromSuperview];
+        }
+    }
+//     _chardial.strokeEnd   = 1.0;
+}
+
+
+
+
+
+@end

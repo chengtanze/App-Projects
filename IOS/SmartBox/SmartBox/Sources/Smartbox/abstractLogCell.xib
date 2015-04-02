@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="6254" systemVersion="14A389" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none">
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="6247"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <tableViewCell contentMode="scaleToFill" selectionStyle="none" indentationWidth="10" reuseIdentifier="cell" rowHeight="423" id="wtk-a9-xfT" customClass="abstractLog_Cell">
+            <rect key="frame" x="0.0" y="0.0" width="48" height="484"/>
+            <autoresizingMask key="autoresizingMask"/>
+            <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="wtk-a9-xfT" id="u8w-H0-R5v">
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="周五" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="R4j-fi-lTa">
+                        <rect key="frame" x="7" y="2" width="34" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <fontDescription key="fontDescription" type="system" pointSize="15"/>
+                        <color key="textColor" red="0.59999999999999998" green="0.59999999999999998" blue="0.59999999999999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="19" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="eTp-LF-NJt">
+                        <rect key="frame" x="3" y="28" width="42" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <fontDescription key="fontDescription" type="boldSystem" pointSize="18"/>
+                        <color key="textColor" red="0.59999999999999998" green="0.59999999999999998" blue="0.59999999999999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <button opaque="NO" contentMode="scaleToFill" placeholderIntrinsicWidth="46" placeholderIntrinsicHeight="426" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="pmL-5G-zPB">
+                        <rect key="frame" x="1" y="55" width="48" height="426"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                        <color key="tintColor" red="0.39607843139999999" green="0.43137254899999999" blue="0.92156862750000001" alpha="1" colorSpace="calibratedRGB"/>
+                    </button>
+                    <view contentMode="scaleToFill" id="XUG-ZN-VS2">
+                        <rect key="frame" x="0.0" y="56" width="1" height="308"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.60784313729999995" green="0.60784313729999995" blue="0.66666666669999997" alpha="1" colorSpace="calibratedRGB"/>
+                    </view>
+                    <view hidden="YES" contentMode="scaleToFill" id="HXD-TW-EEC">
+                        <rect key="frame" x="46" y="56" width="1" height="307"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.60784313725490191" green="0.60784313725490191" blue="0.66666666666666663" alpha="1" colorSpace="calibratedRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="1" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="YQD-mq-exN" userLabel="Cyclo View2" customClass="CycloView">
+                        <rect key="frame" x="4" y="113" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="2" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="Qok-Oc-YUh" userLabel="Cyclo View3" customClass="CycloView">
+                        <rect key="frame" x="4" y="161" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="3" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="oCg-zy-vsb" userLabel="Cyclo View4" customClass="CycloView">
+                        <rect key="frame" x="4" y="209" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="4" contentMode="scaleToFill" id="2kr-oa-dCI" userLabel="Cyclo View5" customClass="CycloView">
+                        <rect key="frame" x="4" y="258" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="iWk-5K-DMc" userLabel="Cyclo View1" customClass="CycloView">
+                        <rect key="frame" x="4" y="65" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862745098042" green="0.6705882352941176" blue="0.054901960784313725" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                </subviews>
+                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+            </tableViewCellContentView>
+            <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+            <connections>
+                <outlet property="LsplitLine" destination="XUG-ZN-VS2" id="lLp-sz-944"/>
+                <outlet property="RsplitLine" destination="HXD-TW-EEC" id="RTO-ZQ-pwe"/>
+                <outlet property="backBt" destination="pmL-5G-zPB" id="QxY-lv-UYO"/>
+                <outlet property="dateView" destination="eTp-LF-NJt" id="gbv-iR-q39"/>
+                <outlet property="weekDateView" destination="R4j-fi-lTa" id="yuP-iA-GAf"/>
+                <outletCollection property="cycloLogView" destination="iWk-5K-DMc" id="gB5-Po-8g8"/>
+                <outletCollection property="cycloLogView" destination="YQD-mq-exN" id="WQZ-dI-pYj"/>
+                <outletCollection property="cycloLogView" destination="Qok-Oc-YUh" id="SxM-Qf-G1H"/>
+                <outletCollection property="cycloLogView" destination="oCg-zy-vsb" id="xyL-JY-DPu"/>
+                <outletCollection property="cycloLogView" destination="2kr-oa-dCI" id="yPh-I5-LRB"/>
+            </connections>
+            <point key="canvasLocation" x="-31" y="277"/>
+        </tableViewCell>
+        <tableViewCell contentMode="scaleToFill" selectionStyle="none" indentationWidth="10" reuseIdentifier="cell2" rowHeight="423" id="nUa-xu-vtU" customClass="abstractLog_Cell">
+            <rect key="frame" x="0.0" y="0.0" width="48" height="484"/>
+            <autoresizingMask key="autoresizingMask"/>
+            <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="nUa-xu-vtU" id="NCv-fJ-N64">
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" id="Tk9-JV-xEm">
+                        <rect key="frame" x="1" y="55" width="47" height="426"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                        <color key="tintColor" red="0.39607843139999999" green="0.43137254899999999" blue="0.92156862750000001" alpha="1" colorSpace="calibratedRGB"/>
+                    </button>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="周六" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="oQp-eS-hvi">
+                        <rect key="frame" x="7" y="2" width="34" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <fontDescription key="fontDescription" type="system" pointSize="15"/>
+                        <color key="textColor" red="0.59999999999999998" green="0.59999999999999998" blue="0.59999999999999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="19" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="rdY-E4-Kt2">
+                        <rect key="frame" x="3" y="28" width="42" height="21"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <fontDescription key="fontDescription" type="boldSystem" pointSize="18"/>
+                        <color key="textColor" red="0.59999999999999998" green="0.59999999999999998" blue="0.59999999999999998" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <nil key="highlightedColor"/>
+                    </label>
+                    <view contentMode="scaleToFill" id="BBc-ic-qgf">
+                        <rect key="frame" x="0.0" y="7" width="1" height="357"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.60784313729999995" green="0.60784313729999995" blue="0.66666666669999997" alpha="1" colorSpace="calibratedRGB"/>
+                    </view>
+                    <view hidden="YES" contentMode="scaleToFill" id="Zwh-G6-klr">
+                        <rect key="frame" x="47" y="56" width="1" height="308"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.60784313729999995" green="0.60784313729999995" blue="0.66666666669999997" alpha="1" colorSpace="calibratedRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="6" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="OLN-kZ-ioo" userLabel="Cyclo2 View1" customClass="CycloView">
+                        <rect key="frame" x="4" y="65" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="7" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="NvL-Ch-xhW" userLabel="Cyclo2 View2" customClass="CycloView">
+                        <rect key="frame" x="4" y="113" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="8" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="5Qt-nt-ccm" userLabel="Cyclo3 View3" customClass="CycloView">
+                        <rect key="frame" x="4" y="161" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="9" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="TvY-ZG-jeW" userLabel="Cyclo4 View4" customClass="CycloView">
+                        <rect key="frame" x="4" y="209" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                    <view userInteractionEnabled="NO" tag="10" contentMode="scaleToFill" placeholderIntrinsicWidth="40" placeholderIntrinsicHeight="40" id="Igg-lC-fbf" userLabel="Cyclo5 View5" customClass="CycloView">
+                        <rect key="frame" x="4" y="258" width="40" height="40"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        <color key="backgroundColor" red="0.32156862749999998" green="0.6705882353" blue="0.054901960780000002" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </view>
+                </subviews>
+                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+            </tableViewCellContentView>
+            <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+            <connections>
+                <outlet property="LsplitLine" destination="BBc-ic-qgf" id="0Fu-Yc-l5a"/>
+                <outlet property="RsplitLine" destination="Zwh-G6-klr" id="Zcr-rl-4nI"/>
+                <outlet property="backBt" destination="Tk9-JV-xEm" id="Ab4-Wp-xT2"/>
+                <outlet property="dateView" destination="rdY-E4-Kt2" id="Pqk-7y-IeK"/>
+                <outlet property="weekDateView" destination="oQp-eS-hvi" id="lpi-Ko-TxL"/>
+                <outletCollection property="cycloLogView" destination="OLN-kZ-ioo" id="NSn-yY-EFz"/>
+                <outletCollection property="cycloLogView" destination="NvL-Ch-xhW" id="cbr-LN-RFK"/>
+                <outletCollection property="cycloLogView" destination="5Qt-nt-ccm" id="yhR-ID-JJT"/>
+                <outletCollection property="cycloLogView" destination="TvY-ZG-jeW" id="KKg-ha-Q9H"/>
+                <outletCollection property="cycloLogView" destination="Igg-lC-fbf" id="41d-B9-Hfs"/>
+            </connections>
+            <point key="canvasLocation" x="73" y="276"/>
+        </tableViewCell>
+    </objects>
+    <simulatedMetricsContainer key="defaultSimulatedMetrics">
+        <simulatedStatusBarMetrics key="statusBar"/>
+        <simulatedOrientationMetrics key="orientation"/>
+        <simulatedScreenMetrics key="destination" type="retina4"/>
+    </simulatedMetricsContainer>
+</document>

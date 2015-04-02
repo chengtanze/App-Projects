@@ -1,0 +1,198 @@
+//
+//  MeTableViewController.m
+//  Smartbox
+//
+//  Created by wangsl-iMac on 15/3/11.
+//  Copyright (c) 2015年 mesada. All rights reserved.
+//
+
+#import "MeTableViewController.h"
+#import "AFAppDotNetAPIClient.h"
+#import "LoginViewController.h"
+#import "MyTabBarController.h"
+
+@interface MeTableViewController ()
+
+@end
+
+@implementation MeTableViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    [[AFAppDotNetAPIClient sharedClient] getUserDetailInfo:^(NSArray *repondData, NSError *error) {
+        //[MBProgressHUD hideHUDForView:self.view animated:YES];
+        
+        if(!error)
+        {
+            if (repondData != nil) {
+
+                self.userInfo = repondData;
+
+                
+                [self updateUserInfo:self.userInfo];
+                
+                NSLog(@"getUserTotalScore callback");
+            }
+        }
+        else{
+            //[self showMessge:@"网络错误，请稍后重试"];
+            
+        }
+    }];
+
+    // Uncomment the following line to preserve selection between presentations.
+    // self.clearsSelectionOnViewWillAppear = NO;
+    
+    // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
+    // self.navigationItem.rightBarButtonItem = self.editButtonItem;
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+-(void)updateUserInfo:(NSArray *)infoArray{
+    
+    NSDictionary * result = infoArray[0];
+    NSDictionary * data = infoArray[1];
+    
+    if (result != nil) {
+        self.userNameLabel.text = [result valueForKey:@"nickName"];
+        self.userIDLabel.text = [result valueForKey:@"userId"];
+        //self.userLVLabel.text = ;//19.2 节获取积分协议
+        //self.userPointLabel.text = ;
+    }
+}
+
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender{
+    
+    if ([segue.identifier isEqualToString:@"PersonlInfo"]) {
+        NSLog(@"prepareForSegue");
+        
+        
+    }
+}
+
+#pragma mark - Table view data source
+
+//- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+//#warning Potentially incomplete method implementation.
+//    // Return the number of sections.
+//    return 0;
+//}
+//
+//- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+//#warning Incomplete method implementation.
+//    // Return the number of rows in the section.
+//    return 0;
+//}
+
+/*
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:<#@"reuseIdentifier"#> forIndexPath:indexPath];
+    
+    // Configure the cell...
+    
+    return cell;
+}
+*/
+
+/*
+// Override to support conditional editing of the table view.
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
+    // Return NO if you do not want the specified item to be editable.
+    return YES;
+}
+*/
+
+/*
+// Override to support editing the table view.
+- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (editingStyle == UITableViewCellEditingStyleDelete) {
+        // Delete the row from the data source
+        [tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    } else if (editingStyle == UITableViewCellEditingStyleInsert) {
+        // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
+    }   
+}
+*/
+
+/*
+// Override to support rearranging the table view.
+- (void)tableView:(UITableView *)tableView moveRowAtIndexPath:(NSIndexPath *)fromIndexPath toIndexPath:(NSIndexPath *)toIndexPath {
+}
+*/
+
+/*
+// Override to support conditional rearranging of the table view.
+- (BOOL)tableView:(UITableView *)tableView canMoveRowAtIndexPath:(NSIndexPath *)indexPath {
+    // Return NO if you do not want the item to be re-orderable.
+    return YES;
+}
+*/
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+- (IBAction)Logout:(id)sender {
+//    UIStoryboard* mainStoryboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
+//    //debug
+////    MyTabBarController *tabController = [mainStoryboard instantiateViewControllerWithIdentifier:@"MainTabBar"];
+//    UINavigationController *NavloginCtr = [mainStoryboard instantiateViewControllerWithIdentifier:@"Login"];
+//    NSLog(@"%@",NavloginCtr.topViewController);
+//    LoginViewController* loginCtr = (LoginViewController*)NavloginCtr.topViewController;
+//    [self presentViewController:loginCtr animated:YES completion:^{}];
+////    loginCtr.toViewCtr = tabController;
+//    NSLog(@"111  11 %@",[UIApplication sharedApplication].keyWindow.rootViewController);
+//    NSLog(@"222 %@", self.tabBarController);
+//    [self dismissViewControllerAnimated:YES completion:^{
+//        UIWindow* window = [[UIApplication sharedApplication].keyWindow];
+//        window.rootViewController = NavloginCtr;
+//        [self presentViewController:NavloginCtr animated:YES completion:^{}];
+//    }];
+    
+//    [self.tabBarController dismissViewControllerAnimated:NO completion:^{}];
+//    UIWindow* window = [UIApplication sharedApplication].keyWindow;
+//    window.rootViewController = NavloginCtr;
+//    [self presentViewController:NavloginCtr animated:YES completion:^{}];
+
+
+    
+    [[TheUserManager defaultUserManager] doLogoutWithDelegate:self];
+    
+    
+}
+
+#pragma mark
+#pragma mark LoginOut Delegate
+- (void) theUserDidLogoutWithState:(NSString*)theState
+{
+    //    [HUD hide:YES];
+    //    [self showMessge:@"退出账号成功"];
+    [self loginOut];
+}
+
+- (void)loginOut
+{
+    self.userNameLabel.text = @"";
+    self.userIDLabel.text = @"";
+    UIStoryboard* mainStoryboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
+    LoginViewController *loginCtr = [mainStoryboard instantiateViewControllerWithIdentifier:@"Login"];
+    [self presentViewController:loginCtr animated:YES completion:nil];
+    
+    NSUserDefaults *SaveDefaults = [NSUserDefaults standardUserDefaults];
+    [SaveDefaults setObject:[NSNumber numberWithInt:0] forKey:LastUserLoginState];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"logoutUserNotify" object:nil];
+}
+
+
+@end

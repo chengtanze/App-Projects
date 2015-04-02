@@ -1,0 +1,19 @@
+
+//  DriveLogsController.h
+//  Smartbox
+//
+//  Created by Mesada on 14/12/4.
+//  Copyright (c) 2014年 mesada. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "landscapeTableView.h"
+
+@interface DriveLogsController : UIViewController<UITableViewDataSource,UITableViewDelegate>
+
+@property (strong, nonatomic) IBOutlet UILabel *dateView;
+
+@property (strong, nonatomic) IBOutlet landscapeTableView *tableView;
+
+@property (strong,readonly) NSString*   StrItemDate;
+@end

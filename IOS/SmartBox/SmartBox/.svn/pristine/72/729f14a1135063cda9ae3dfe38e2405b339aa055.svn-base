@@ -1,0 +1,283 @@
+//
+//  RoadRescueController.m
+//  Smartbox
+//
+//  Created by Mesada on 14/12/26.
+//  Copyright (c) 2014年 mesada. All rights reserved.
+//
+
+#import "RoadRescueController.h"
+#import "PublicFunction.h"
+#import "UserInfo.h"
+#import "UserDAO.h"
+#import "LoginManager.h"
+#import "AFAppDotNetAPIClient.h"
+#import "APIKey.h"
+#import "MBProgressHUD.h"
+#import "AFJsonAPIClient.h"
+
+typedef NS_ENUM(NSInteger, RESCUETYPE)
+{
+    RESCUE_UNKONW =-1,
+    RESCUE_OILLESS =0,   //@"无油救援";
+    RESCUE_ANCHOR  = 1,  //@"抛锚救援";
+    RESCUE_FLATTYRE = 2, //@"爆胎救援";
+    RESCUE_CARTAGE =5,   //@"拖车救援";
+    RESCUE_WATER  = 3,   //@"加水救援";
+    RESCUE_CHARGING = 4, //@"泵电救援";
+    RESCUE_OTHER =6      //@"其他救援";
+};
+
+
+@interface RoadRescueController ()
+{
+    RESCUETYPE rescueType;// 救援类型
+    UserInfo_assist* userinfo;
+    MBProgressHUD *hudb;
+    double Carlatitude;
+    double Carlongitude;
+}
+@property (nonatomic, strong) AMapSearchAPI *search;
+@end
+
+@implementation RoadRescueController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    // Uncomment the following line to preserve selection between presentations.
+    // self.clearsSelectionOnViewWillAppear = NO;
+    
+    // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
+    // self.navigationItem.rightBarButtonItem = self.editButtonItem;
+    _CurrentDateTimeCell.detailTextLabel.text = [PublicFunction getCurDateTime];
+    _search = [[AMapSearchAPI alloc] initWithSearchKey:(NSString*)APIKey Delegate:self];
+    //从数据库中获取用户信息
+    UserInfo_assist* info = [[UserDAO sharedManager] find:[[LoginManager sharedInstance].userId integerValue]];
+    if (info) {
+        userinfo = info;
+    }
+    [self refreshUI];
+    [self getCarLocation];
+    NSLog(@"%@",self.navigationController.view);
+    rescueType = -1;
+    
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+#pragma mark - Table view data source
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+    // Return the number of sections.
+    return 1;
+}
+
+-(void)refreshUI
+{
+    _CarNumberCell.detailTextLabel.text = userinfo.carnumber;
+    _phoneNumberCell.detailTextLabel.text = userinfo.phonenumber;
+//    _addressCell.detailTextLabel.text = @"";
+}
+
+-(void)getCarLocation
+{
+    [self showLoadingHUB:nil];
+    [[AFAppDotNetAPIClient sharedClient] getCarLocation:^(NSDictionary *CarLocationDic, NSError *error){
+        if(nil == error)
+        {
+            NSLog(@"CarLocationDic =%@",CarLocationDic);
+            Carlatitude = [[CarLocationDic objectForKey:@"elat"] doubleValue];
+            Carlongitude =[[CarLocationDic objectForKey:@"elng"] doubleValue];
+            //
+            //            SmartAnnotation *annotation = [[SmartAnnotation alloc] initWithCoordinate:CLLocationCoordinate2DMake(latitude,longitude)];
+            //            annotation.type = Car_Annotation;
+            //            [self.mapView addAnnotation:annotation];
+            _carCoordinate = CLLocationCoordinate2DMake(Carlatitude,Carlongitude);
+
+            //
+            //构造AMapReGeocodeSearchRequest对象，location为必选项，radius为可选项
+            AMapReGeocodeSearchRequest *regeoRequest = [[AMapReGeocodeSearchRequest alloc] init];
+            regeoRequest.searchType = AMapSearchType_ReGeocode;
+            regeoRequest.location = [AMapGeoPoint locationWithLatitude:Carlatitude longitude:Carlongitude];
+            regeoRequest.radius = 10000;
+            regeoRequest.requireExtension = YES;
+            
+            //发起逆地理编码
+            [_search AMapReGoecodeSearch: regeoRequest];
+        }
+        else{//错误
+            [self hideHUD];
+        }
+    }];
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    // Return the number of rows in the section.
+    return 4;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
+{
+    return 8;
+}
+
+
+#pragma mark --AMapSearchDelegate
+/* 逆地理编码回调. */
+- (void)onReGeocodeSearchDone:(AMapReGeocodeSearchRequest *)request response:(AMapReGeocodeSearchResponse *)response
+{
+    [self hideHUD];
+    if (response.regeocode != nil)
+    {
+        AMapAddressComponent *addressComponent = response.regeocode.addressComponent;
+
+        NSString* straddress = [NSString stringWithFormat:@"%@%@%@%@",
+                                addressComponent.city,
+                                addressComponent.district,
+                                addressComponent.township,
+                                addressComponent.building];
+        NSLog(@"ismainthread%d  %@", [NSThread isMainThread] , straddress);
+        
+        _addressCell.detailTextLabel.text = straddress;
+        
+    }
+   
+}
+#pragma mark --private
+- (void)showHUB:(NSString *)mes
+{
+    if (hudb) {
+        [hudb removeFromSuperViewOnHide];
+        hudb.hidden = YES;
+        hudb = nil;
+    }
+    hudb = [MBProgressHUD showHUDAddedTo:self.navigationController.view animated:YES];
+    hudb.customView = [[UIImageView alloc] init];
+    hudb.mode = MBProgressHUDModeCustomView;
+    hudb.labelText = mes;
+    [hudb hide:YES afterDelay:2];
+}
+
+
+-(void)showLoadingHUB:(NSString *)message
+{
+    if (hudb) {
+        [hudb removeFromSuperViewOnHide];
+        hudb = nil;
+    }
+    hudb = [MBProgressHUD showHUDAddedTo:self.navigationController.view animated:YES];
+    hudb.labelText = message;
+    //bobo
+//    hudb.userInteractionEnabled = NO;
+}
+
+- (void)hideHUD
+{
+    if (hudb) {
+        hudb.hidden = YES;
+        hudb = nil;
+    }
+}
+
+- (IBAction)selectRescueType:(checkButton*)sender {
+    for (checkButton *bt in _rescueBts) {
+        bt.isSelect = FALSE;
+    }
+    sender.isSelect = TRUE;
+    rescueType = sender.tag;
+}
+
+- (IBAction)requsetHelp:(id)sender {
+    NSString* carNum = _CarNumberCell.detailTextLabel.text;
+    NSString* phoneNum = _phoneNumberCell.detailTextLabel.text;
+    NSString* dateTime = _CurrentDateTimeCell.detailTextLabel.text;
+    NSString* mScene = _addressCell.detailTextLabel.text;
+    
+    if ( carNum.length>0) {
+        if (phoneNum.length>0) {
+            if (rescueType>=0) {
+                if (dateTime.length>0) {
+                        if (mScene.length>0) {
+                            NSDictionary* datadic =  @{@"mobile":phoneNum,@"latitude":[NSString stringWithFormat:@"%f",Carlatitude],@"longitude":[NSString stringWithFormat:@"%f",Carlongitude],@"helpType":[NSString stringWithFormat:@"%d",rescueType],@"requestTime":dateTime};
+                            [self showLoadingHUB:@"正在发送请求.."];
+                            [[AFJsonAPIClient sharedClient]RequsetRoadhelp:datadic complete:^(NSDictionary *jsonDic, NSError *error) {
+                                NSString *strResult = [jsonDic valueForKeyPath:@"res.result"];
+                                NSString *errCode = [NSString stringWithFormat:@"%@",[jsonDic valueForKeyPath:@"res.errCode"]];
+                                [self hideHUD];
+                                if(error)
+                                {
+                                    [PublicFunction showMessage:@"道路救援发失败"];
+                                }
+                                 else
+                                 {
+                                     
+                                     NSInteger retCode = [strResult integerValue];
+                                     if ([errCode isEqualToString:@"0"]) {
+                                         switch (retCode) {
+                                             case 0:
+                                                 [PublicFunction showMessage:@"道路救援发送成功"];
+                                                 break;
+                                             case 1:
+                                                 [PublicFunction showMessage:@"已购买道路救援,请求第三方"];
+                                                 break;
+                                             case 2:
+                                                 [PublicFunction showMessage:@"未购买道路救援"];
+                                                 break;
+                                             case 3:
+                                                 [PublicFunction showMessage:@"道路救援服务已过期"];
+                                                 break;
+                                             case 4:
+                                                 [PublicFunction showMessage:@"服务器繁忙,无空闲坐席"];
+                                                 break;
+                                             case 5:
+                                                 [PublicFunction showMessage:@"4S店客服不在线"];
+                                                 break;
+                                             case 6:
+                                                 [PublicFunction showMessage:@"4S服务器异常"];
+                                                 break;
+                                                 
+                                             default:
+                                                 break;
+                                         }
+                                     } else if ([errCode isEqualToString:@"9003"]) {
+                                         [PublicFunction showMessage:@"参数错误."];
+                                     }
+                                 }
+                            }];
+                        } else {
+                            [PublicFunction showMessage:@"请输入事发地点."];
+                        }
+                    } else {
+                        [PublicFunction showMessage:@"请输入事发时间."];
+                    }
+            } else {
+                [PublicFunction showMessage:@"请选择救援类型."];
+            }
+        } else {
+            [PublicFunction showMessage:@"请填写联系电话."];
+        }
+    } else {
+        [PublicFunction showMessage:@"请设置车牌号."];
+    }
+}
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+    if ([segue.identifier isEqualToString:@"roadTophone"]) {
+        phoneNumController* destination = segue.destinationViewController;
+        destination.delegate = self;
+    }
+}
+
+#pragma mark - SetphoneDelegate
+-(void)Setphone:(NSString*)phonenum
+{
+    _phoneNumberCell.detailTextLabel.text = phonenum;
+}
+@end

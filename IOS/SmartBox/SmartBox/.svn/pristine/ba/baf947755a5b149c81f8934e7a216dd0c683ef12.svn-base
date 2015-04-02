@@ -1,0 +1,372 @@
+
+//  DriveLogsController.m
+//  Smartbox
+//
+//  Created by Mesada on 14/12/4.
+//  Copyright (c) 2014年 mesada. All rights reserved.
+//
+
+#import "DriveLogsController.h"
+#import "MJRefresh.h"
+#import "abstractLogCell.h"
+#import "AFAppDotNetAPIClient.h"
+#import "PublicFunction.h"
+
+#define  MILEAGE     @"mileage"
+# define TRAVELDATE  @"startTimeConvert"
+#define  TIMESPAN    31
+
+
+@interface DriveLogsController (){
+    CGPoint tempLablepoint;
+    CGPoint Lablepoint;
+    CGFloat Lableoffset;
+}
+@property (strong,nonatomic)  NSMutableArray* sourceData;
+@property (strong,nonatomic)  NSDate* lastDate;
+@end
+
+@implementation DriveLogsController
+
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view, typically from a nib.
+    self.automaticallyAdjustsScrollViewInsets = NO;
+   [self addfooter];
+    _sourceData = [[NSMutableArray alloc]initWithCapacity:18];
+    _lastDate = [NSDate date];
+    [self getDataFromWeb:_lastDate complete:nil];
+}
+    
+- (void)didReceiveMemoryWarning {
+        [super didReceiveMemoryWarning];
+        // Dispose of any resources that can be recreated.
+}
+
+#pragma mark DTGridViewDataSource Methods
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    return [_sourceData count];
+}
+
+-(void)getDataFromWeb:(NSDate*) dateArg complete:(void(^)(NSError *error))block
+{///
+    NSDateComponents *compt = [[NSDateComponents alloc] init];
+    [compt setDay:-TIMESPAN];
+    
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+   __block NSDate *startDate = [calendar dateByAddingComponents:compt toDate:dateArg options:NSCalendarSearchBackwards];
+    
+   
+    NSDateFormatter *dateFormat = [[NSDateFormatter alloc] init];
+    [dateFormat setDateFormat:@"yyyy-MM-dd"];
+    __block NSDate *  endDate = dateArg;
+    NSString* strbeginDate = [dateFormat stringFromDate:startDate];
+    NSString* strendDate = [dateFormat stringFromDate:endDate];
+    
+    
+   __block void(^myblock)(NSError *error)  = block;
+    ///
+    [[AFAppDotNetAPIClient sharedClient] findDriveRecordForWeek:strbeginDate endDate:strendDate   complete:^(NSArray *DriveRecord, NSError *error){
+        
+        NSMutableDictionary* cellsData = [[NSMutableDictionary alloc]init];
+        
+        [DriveRecord enumerateObjectsUsingBlock:^(NSDictionary *dic, NSUInteger idx, BOOL *stop)
+         {
+             float fmileage = [[dic objectForKey:MILEAGE] floatValue];//里程
+             NSRange rang = {0,10};
+             NSString *trivel = [dic objectForKey:TRAVELDATE];
+             if(trivel.length <11)
+             {
+                 return ;
+             }
+             NSString* startDate = [trivel substringWithRange:rang];//日期
+             
+             NSMutableArray* DayInof = [cellsData objectForKey:startDate];//日期->{日期, 里程1，里程2}
+             if (!DayInof) {//找不到
+                 DayInof = [[NSMutableArray alloc]initWithObjects:startDate,nil];
+                 [DayInof addObject:[NSNumber numberWithFloat:fmileage]];
+        
+                 [cellsData setObject:DayInof forKey:startDate];
+             }
+             else
+                 [DayInof addObject:[NSNumber numberWithFloat:fmileage]];
+             
+             
+         }];
+
+        NSDateFormatter *dateFormat = [[NSDateFormatter alloc] init];
+        [dateFormat setDateFormat:@"yyyy-MM-dd"];
+        ///
+        for (int i =0 ; i<TIMESPAN; i++) {
+            NSDateComponents *compt = [[NSDateComponents alloc] init];
+            [compt setDay:-i];
+            NSCalendar *calendar = [NSCalendar currentCalendar];
+            NSDate *indexDate = [calendar dateByAddingComponents:compt toDate:endDate options:NSCalendarSearchBackwards];
+            NSString* strDate = [dateFormat stringFromDate:indexDate];
+        
+            NSArray* daymileages = [cellsData objectForKey:strDate];
+            if (!daymileages) {
+                NSArray*  nomileage = [[NSArray alloc] initWithObjects:strDate, nil];
+              [_sourceData addObject:nomileage];
+            }
+            else{
+                [_sourceData addObject:daymileages];
+            }
+            
+        }
+        ///
+        NSDateComponents *compt = [[NSDateComponents alloc] init];
+        [compt setDay:-1];
+        _lastDate = [calendar dateByAddingComponents:compt toDate:endDate options:NSCalendarSearchBackwards];;
+        [self.tableView reloadData];
+        [self changeDataViewTip:true ];
+        if(myblock)
+        {
+            myblock(error);
+        }
+        
+    }
+     
+     ];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+   NSArray* celldata = [_sourceData objectAtIndex:indexPath.row];
+   NSDateFormatter* dateFormatter = [[NSDateFormatter alloc]init];
+   [dateFormatter setDateFormat:@"yyyy-MM-dd"];
+   
+   NSDate*  destDate = [dateFormatter dateFromString:[celldata objectAtIndex:0]];
+   NSInteger  weekday = [PublicFunction weekdayStringFromDate: destDate];
+    abstractLog_Cell*  cell ;
+    if (weekday == 2) {
+       cell  = [tableView dequeueReusableCellWithIdentifier:@"cell2"];
+        if (!cell) {
+            cell = [[[NSBundle mainBundle]loadNibNamed:@"abstractLogCell" owner:self options:nil]objectAtIndex:1];
+            [landscapeTableView adjustCell:cell];
+            [cell.backBt addTarget:self action:@selector(clickCellItem:) forControlEvents:UIControlEventTouchUpInside];
+        }
+    }
+    else
+    {
+        cell = [tableView dequeueReusableCellWithIdentifier:@"cell1"];
+        if (!cell) {
+            cell = [[[NSBundle mainBundle]loadNibNamed:@"abstractLogCell" owner:self options:nil]objectAtIndex:0];
+            [landscapeTableView adjustCell:cell];
+            [cell.backBt addTarget:self action:@selector(clickCellItem:) forControlEvents:UIControlEventTouchUpInside];
+
+        }
+    }
+
+    cell.backBt.tag = indexPath.row;
+    if (indexPath.row == 0) {
+        cell.RsplitLine.hidden = FALSE;
+    }
+    else
+    {
+        cell.RsplitLine.hidden = YES;
+    }
+    
+    switch (weekday) {
+        case 1:
+            cell.weekDateView.text = @"周日";  break;
+        case 2:
+            cell.weekDateView.text = @"周一";  break;
+        case 3:
+           cell.weekDateView.text  = @"周二";  break;
+        case 4:
+            cell.weekDateView.text = @"周三";  break;
+        case 5:
+           cell.weekDateView.text  = @"周四";  break;
+        case 6:
+           cell.weekDateView.text  = @"周五";  break;
+        case 7:
+           cell.weekDateView.text  = @"周六";  break;
+        default:
+           cell.weekDateView.text  = @"周";    break;
+    }
+    
+    //日
+    NSRange rangday ={8,2};
+    int day = [[[celldata objectAtIndex:0] substringWithRange:rangday] integerValue];
+    cell.dateView.text = [NSString stringWithFormat:@"%d",day];
+    //bobo 排序是为了：解决了显示不正确的问题，原因拉进去的控件顺序和代码迭代的顺序不一致。。。nnd搞了半天
+    cell.cycloLogView = [cell.cycloLogView sortedArrayUsingComparator:
+                       ^NSComparisonResult(CycloView *obj1, CycloView *obj2) {
+                           if (obj1.tag >= obj2.tag) {
+                               return NSOrderedDescending;
+                           }
+                           else
+                           {
+                               return NSOrderedAscending;
+                           }
+                       }];
+    
+    [cell.cycloLogView enumerateObjectsUsingBlock:^(CycloView *view, NSUInteger idx, BOOL *stop)
+     {
+         if (idx == 0) {
+             view.hidden = FALSE;
+             CGAffineTransform scaled = CGAffineTransformScale(CGAffineTransformIdentity, 0.15, 0.15);
+             [view setTransform:scaled];
+         }
+         else
+         {
+             view.hidden = TRUE;
+         }
+         NSLog(@"data = [%@] view isHidden= [%d] ,tag=[%d]", (NSString*)celldata[0],view.isHidden,view.tag);
+     }];
+    
+    if(celldata.count<=1)
+    {
+        cell.userInteractionEnabled = FALSE;
+    }
+    else
+    {
+        cell.userInteractionEnabled = YES;
+    }
+    //
+    //设置圆圈:y=a*x+30%, 100km最大 , a==0.7
+    int i = 1;
+    for (; i<celldata.count && i <= cell.cycloLogView.count; i++) {
+        float fmileage = [[celldata objectAtIndex:i] floatValue];
+        float fscale = 0.3;
+        if (fmileage>=100) {
+            fscale = 1.0;
+        }
+        else
+        {
+            fscale = 0.7*(fmileage/100)+0.3;
+        }
+        CycloView*  mileageView = cell.cycloLogView[i-1];
+        mileageView.hidden = FALSE;
+        //缩放
+        CGAffineTransform scaled = CGAffineTransformScale(CGAffineTransformIdentity, fscale, fscale);
+        [mileageView setTransform:scaled];
+    }
+    //剩余的都设置为0.3
+//    for ( ;i <= cell.cycloLogView.count;i++) {
+//        if(i>1)
+//        {
+//         CycloView*  mileageView = cell.cycloLogView[i-1];
+//         mileageView.hidden = TRUE;
+//        }
+//    }
+    
+
+     
+    return cell;
+}
+
+//因为已经旋转过，所以高其实是宽
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    static CGFloat cellHeight = 0 ;
+    if ( 0 == cellHeight) {
+//        UITableViewCell* cell = [self tableView:tableView cellForRowAtIndexPath:indexPath];
+        UITableViewCell* cell = [[[NSBundle mainBundle]loadNibNamed:@"abstractLogCell" owner:self options:nil]objectAtIndex:1];
+        [landscapeTableView adjustCell:cell];
+        cellHeight = cell.frame.size.height;
+
+    }
+   return cellHeight;
+}
+
+- (void)addfooter
+{
+    //    __unsafe_unretained typeof(self) vc = self;
+    __weak typeof(self) vc = self;
+    // 添加下拉刷新头部控件
+    [self.tableView addFooterWithCallback:^{
+        // 进入刷新状态就会回调这个Block
+   
+        [vc getDataFromWeb:vc.lastDate complete:^(NSError *error){
+//            [vc testaddData];//test bobo
+            // 结束刷新
+            if (vc) {
+                [vc.tableView footerEndRefreshing];
+            }
+        }];
+    }];
+    
+    //#warning 自动刷新(一进入程序就下拉刷新)
+    //    [self.collectionView headerBeginRefreshing];
+}
+
+//table也是scrollview所以只要滚动就会调用这个方法
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView{
+//    NSLog(@"Scrolling...%f",scrollView.contentOffset.y);
+    static CGFloat histroyY = 0;
+    CGFloat currenty = scrollView.contentOffset.y;
+    bool bleft = false;
+    if (currenty - histroyY>0) {
+        bleft = YES;
+    }
+    else if(currenty - histroyY<0){
+        bleft = NO;
+    }
+    
+    histroyY = currenty;
+    [self changeDataViewTip:bleft];
+//        UITableViewCell * cell = [self.tableView cellForRowAtIndexPath:indexPath];
+//        if (cell) {
+//            NSLog(@"cell=%@",cell);
+//        }
+    
+    
+}
+//滚动结束就会调用这个方法
+//- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate{
+//    NSLog(@"Scrolling Stoped...");
+//    
+//}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    if (!decelerate)
+    {
+//        CGFloat targety = self.tableView.contentOffset.y+self.tableView.frame.size.width;
+//        NSIndexPath * indexPath = [self.tableView indexPathForRowAtPoint:CGPointMake(0, targety)];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+     NSLog(@"scrollViewDidEndDecelerating =%f",scrollView.contentOffset.y);
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+    NSLog(@"scrollViewDidEndScrollingAnimation =%f",scrollView.contentOffset.y);
+}
+
+-(void) changeDataViewTip:(BOOL)bleft
+{
+    NSIndexPath * indexPath = [self.tableView indexPathForRowAtPoint:CGPointMake(0, self.tableView.contentOffset.y+self.tableView.frame.size.width)];
+    if (indexPath) {
+        NSRange rang={5,2};
+        NSString* dateStr = [[_sourceData objectAtIndex:indexPath.row] objectAtIndex:0];
+        NSString *monthstr = [dateStr substringWithRange:rang];
+        NSRange rang2={0,4};
+        NSString* yearstr = [dateStr substringWithRange:rang2];//同一年
+        if ([[PublicFunction getCurYear] isEqualToString:yearstr]) {
+            _dateView.text = [NSString stringWithFormat:@"%d月",[monthstr integerValue]];
+        }
+        else
+        {
+           _dateView.text = [NSString stringWithFormat:@"%@年%d月",yearstr,[monthstr integerValue]];
+        }
+    }
+    
+}
+
+-(void)clickCellItem:(id)sender
+{
+    //日期->{日期, 里程1，里程2}
+    NSArray* celldate =  [_sourceData objectAtIndex:((UIButton*)sender).tag];
+    _StrItemDate = [celldate objectAtIndex:0];
+    [self performSegueWithIdentifier:@"Un2TravelLog" sender:self];
+}
+@end

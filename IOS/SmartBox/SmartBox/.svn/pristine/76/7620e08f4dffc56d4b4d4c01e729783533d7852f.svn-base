@@ -1,0 +1,203 @@
+//
+//  InjuredRescueController.m
+//  Smartbox
+//
+//  Created by Mesada on 14/12/26.
+//  Copyright (c) 2014年 mesada. All rights reserved.
+//
+
+#import "InjuredRescueController.h"
+#import "UserInfo.h"
+#import "UserDAO.h"
+#import "LoginManager.h"
+#import "APIKey.h"
+#import "MBProgressHUD.h"
+
+@interface InjuredRescueController ()
+{
+    UserInfo_assist* userinfo;
+    MAMapView* signMapView;
+    MBProgressHUD *hudb;
+}
+@property (strong, nonatomic) IBOutlet UITableViewCell *carNumCell;
+@property (strong, nonatomic) IBOutlet UITableViewCell *phoneCell;
+@property (strong, nonatomic) IBOutlet UITableViewCell *urgentPhoneCell;
+@property (strong, nonatomic) IBOutlet UITableViewCell *siteCell;
+
+@property (nonatomic, strong) AMapSearchAPI *search;
+@end
+
+@implementation InjuredRescueController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    
+    // Uncomment the following line to preserve selection between presentations.
+    // self.clearsSelectionOnViewWillAppear = NO;
+    
+    // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
+    // self.navigationItem.rightBarButtonItem = self.editButtonItem;
+    _search = [[AMapSearchAPI alloc] initWithSearchKey:(NSString*)APIKey Delegate:self];
+    signMapView = [[MAMapView alloc]initWithFrame:CGRectMake(0, 0, 1, 1)];
+    signMapView.showsUserLocation = YES;
+    signMapView.delegate = self;
+    //从数据库中获取用户信息
+    UserInfo_assist* info = [[UserDAO sharedManager] find:[[LoginManager sharedInstance].userId integerValue]];
+    if (info) {
+        userinfo = info;
+    }
+    _carNumCell.detailTextLabel.text = userinfo.carnumber;
+    _phoneCell.detailTextLabel.text = userinfo.phonenumber;
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+#pragma mark - Table view data source
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
+#warning Potentially incomplete method implementation.
+    // Return the number of sections.
+    return 1;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+#warning Incomplete method implementation.
+    // Return the number of rows in the section.
+    return 4;
+}
+
+
+- (void)mapView:(MAMapView *)theMapView didUpdateUserLocation:(MAUserLocation *)userLocation
+
+{
+    if (userLocation.location) {
+        //  userLocation.coordinate 所包含的经纬度则是真实的经纬度，不需要纠偏
+        //  开始取具体的地理位置和周边的位置,具体实现代码同上
+//        CLLocationCoordinate2D carCoordinate = CLLocationCoordinate2DMake(userLocation.location.coordinate.latitude,userLocation.location.coordinate.longitude);
+        
+        //
+        //构造AMapReGeocodeSearchRequest对象，location为必选项，radius为可选项
+        [self showLoadingHUB:nil];
+        AMapReGeocodeSearchRequest *regeoRequest = [[AMapReGeocodeSearchRequest alloc] init];
+        regeoRequest.searchType = AMapSearchType_ReGeocode;
+        regeoRequest.location = [AMapGeoPoint locationWithLatitude:userLocation.location.coordinate.latitude longitude:userLocation.location.coordinate.longitude];
+        regeoRequest.radius = 10000;
+        regeoRequest.requireExtension = YES;
+        
+        //发起逆地理编码
+        [_search AMapReGoecodeSearch: regeoRequest];
+        signMapView.showsUserLocation = NO;
+    }
+    
+    signMapView = nil;
+    
+    //非常重要的一句代码，因为每一次点击签到，都要重新创建一个MKMapView,，以便能获取当前最新的经纬度，所以这里每签到一次后就要清除旧对象，重新创建对象，再重新定位。
+    
+}
+
+-(void)mapView:(MAMapView *)mapView didFailToLocateUserWithError:(NSError *)error
+
+{
+    
+    if (error.code == kCLErrorDenied){
+        
+        NSLog(@"User refused location services");
+        
+    } else {
+        
+        NSLog(@"Did fail to locate user with error: %@", error.description);
+        
+    }
+    
+    signMapView = nil;
+    
+} // 如果获取不到用户位置，则调用此代理方
+
+/* 逆地理编码回调. */
+- (void)onReGeocodeSearchDone:(AMapReGeocodeSearchRequest *)request response:(AMapReGeocodeSearchResponse *)response
+{
+    [self hideHUD];
+    if (response.regeocode != nil)
+    {
+        AMapAddressComponent *addressComponent = response.regeocode.addressComponent;
+        
+        NSString* straddress = [NSString stringWithFormat:@"%@%@%@%@",
+                                addressComponent.city,
+                                addressComponent.district,
+                                addressComponent.township,
+                                addressComponent.building];
+        NSLog(@"ismainthread%d  %@", [NSThread isMainThread] , straddress);
+        
+        _siteCell.detailTextLabel.text = straddress;
+        
+    }
+    
+}
+
+#pragma mark --private
+- (void)showHUB:(NSString *)mes
+{
+    if (hudb) {
+        [hudb removeFromSuperViewOnHide];
+        hudb.hidden = YES;
+        hudb = nil;
+    }
+    hudb = [MBProgressHUD showHUDAddedTo:self.navigationController.view animated:YES];
+    hudb.customView = [[UIImageView alloc] init];
+    hudb.mode = MBProgressHUDModeCustomView;
+    hudb.labelText = mes;
+    [hudb hide:YES afterDelay:2];
+}
+
+
+-(void)showLoadingHUB:(NSString *)message
+{
+    if (hudb) {
+        [hudb removeFromSuperViewOnHide];
+        hudb = nil;
+    }
+    hudb = [MBProgressHUD showHUDAddedTo:self.navigationController.view animated:YES];
+    hudb.labelText = message;
+    //bobo
+    //    hudb.userInteractionEnabled = NO;
+}
+
+- (void)hideHUD
+{
+    if (hudb) {
+        hudb.hidden = YES;
+        hudb = nil;
+    }
+}
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+    if ([segue.identifier isEqualToString:@"InjuredRescueSeg"]) {
+        phoneNumController* destination = segue.destinationViewController;
+        destination.delegate = self;
+        destination.userIdentifier = @"InjuredRescueSeg";
+    }
+    else if([segue.identifier isEqualToString:@"InjuredRescueSegex"])
+    {
+        phoneNumController* destination = segue.destinationViewController;
+        destination.delegate = self;
+        destination.userIdentifier = @"InjuredRescueSegex";
+    }
+}
+
+#pragma mark - SetphoneDelegate
+-(void)Setphone:(NSString*)phonenum userIdentifier:(NSString *)Identifier
+{
+    if ([Identifier isEqualToString:@"InjuredRescueSeg"]) {
+        _phoneCell.detailTextLabel.text = phonenum;
+    }
+    else
+    {
+        _urgentPhoneCell.detailTextLabel.text = phonenum;
+    }
+}
+
+@end

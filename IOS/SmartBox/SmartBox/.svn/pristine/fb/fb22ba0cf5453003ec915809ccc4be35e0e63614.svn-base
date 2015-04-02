@@ -1,0 +1,462 @@
+ //
+//  TheUserManager.m
+//  inCarTime
+//
+//  Created by PippoTan on 11-8-2.
+//  Copyright 2011 __MyCompanyName__. All rights reserved.
+//
+
+#import "TheUserManager.h"
+#import "Login_Request+Response.h"
+#import "Generic_Request+Response.h"
+#import "GetDetailInfo_Request+Response.h"
+#import "Logout_Request+Response.h"
+#import "P2PMessage_Request_Response.h"
+
+#import "TheTCPClient.h"
+#import "appDelegate.h"
+#import "UserDAO.h"
+
+NSString* userReloginedNotify = @"userRelogined_Notify";
+NSString* userReloginErrorNotify = @"userReloginError_Notify";
+
+@interface TheUserManager()
+
+- (void)sendLoginRequest;
+- (void)processUserLogouted:(NSString*)error;
+
+- (void)NetworkConnectedNotified : (NSNotification *)aNotification;
+- (void)NetworkDisconnectNotified : (NSNotification *)aNotification;
+
+@end
+
+@implementation TheUserManager
+
+@synthesize theCurrentUserID;
+@synthesize theSessionKey;
+
+@synthesize tempEmailString;
+@synthesize tempUserID;
+@synthesize tempPassword;
+@synthesize DeviceToken;
+
+//@synthesize threadManagedContext;
+//@synthesize theMainThreadContext;
+@synthesize tempUserType;
+
+@synthesize userLoginType;
+@synthesize tempMobileNum;
+@synthesize tempTimeIntVal;
+@synthesize tempLoginKey;
+@synthesize delegate;
+
+
+- (id)init
+{
+	if (self = [super init]) {
+		NSLog(@"Create the user manager.");
+//        self.theMainThreadContext = nil;
+       
+		theCurrentState = STATE_INIT;
+		
+		didUpdateDetailInfo = NO;
+		
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(NetworkConnectedNotified:) name:NetworkConnectedNotifier object:nil];
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(NetworkDisconnectNotified:) name:NetworkDisconnectNotifier object:nil];
+	}
+	return self;
+}
+
+- (void)dealloc
+{
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
+
+	self.theSessionKey = nil;
+//	self.theMainThreadContext = nil;
+	
+	self.tempPassword = nil;
+	self.tempEmailString = nil;
+	self.DeviceToken = nil;
+	
+	self.delegate = nil;
+	
+	//[super dealloc];
+}
+
+static TheUserManager* kDefaultManager = nil;
+
++ (TheUserManager*) defaultUserManager
+{
+	if (kDefaultManager == nil) {
+		kDefaultManager = [[TheUserManager alloc] init];
+	}
+	
+	return kDefaultManager;
+}
+
+- (NSInteger)getCurrentUserID
+{
+	//默认的ID 上次登录的id
+	if (self.theCurrentUserID == 0) {
+		NSUserDefaults* theUserDefaults = [NSUserDefaults standardUserDefaults];
+		NSInteger userId = [theUserDefaults integerForKey:@"LastUserID"];
+		theCurrentUserID = userId;
+	}
+	return self.theCurrentUserID;
+}
+
+- (BOOL)isOnline
+{
+	return theCurrentState == STATE_ONLINE ? YES : NO;
+}
+
+- (void)resetSate
+{
+	theCurrentState = STATE_INIT;
+	didUpdateDetailInfo = NO;
+}
+
+
+- (void)NetworkConnectedNotified : (NSNotification *)aNotification
+{
+	NSLog(@"NetworkConnectedNotified. [theCurrentState = %d]", theCurrentState);
+	
+	if (theCurrentState == STATE_OFFLINE) {
+		theCurrentState = STATE_LOGINING;
+		[self sendLoginRequest];
+	}
+}
+
+- (void)NetworkDisconnectNotified : (NSNotification *)aNotification
+{
+	NSLog(@"NetworkDiiiiiiiiiisconnectNotified theCurrentState = %d", theCurrentState);
+	
+	if (theCurrentState == STATE_ONLINE) {
+		theCurrentState = STATE_OFFLINE;
+	}
+}
+
+- (void)doLogin:(UInt8)theLoginType  //0-车友号登录,邮箱登录 1-手机号码登录,2-QQ ,3-新浪,4-腾讯  //0-车友号登录  1-邮箱登录
+	  andUserID:(UInt32)theUserID
+	   andEmail:(NSString*)theEmail
+   andMobileNum:(NSString*)theMobileNum
+    andOtherKey:(NSString*)theOtherKey
+  andTimeIntVal:(NSString*)theTimeIntval
+	andPassword:(NSString*)thePassword
+ andDeviceToken:(NSString*)theDeviceToken
+	andDelegate:(id)theDelegate
+{
+	loginType = theLoginType;
+    
+	theCurrentUserID = theUserID;
+
+    if(theEmail) {
+        self.tempEmailString = [theEmail copy];
+    } else {
+        self.tempEmailString = nil;
+    }
+    if (theMobileNum) {
+        self.tempMobileNum = [theMobileNum copy];
+    } else {
+        self.tempMobileNum = nil;
+    }
+    if (theOtherKey) {
+        if (theLoginType == 2 || theLoginType == 3 || theLoginType == 4) {
+            self.tempLoginKey = theOtherKey;
+        } else {
+            self.tempLoginKey = 0;
+        }
+        
+    } else {
+        self.tempLoginKey = nil;
+    }
+    self.tempTimeIntVal = theTimeIntval;
+	self.tempUserID = theUserID;
+    if (thePassword) {// 第三方登录时，没有密码
+        self.tempPassword = [thePassword copy];
+    } else {
+        self.tempPassword = nil;
+    }
+	
+    if(theDeviceToken){
+        self.DeviceToken = [theDeviceToken copy];
+    } else {
+        self.DeviceToken = nil;
+    }
+    
+    if (self.delegate) {
+        self.delegate = nil;
+    }
+	self.delegate = theDelegate;
+	
+	[self sendLoginRequest];
+	
+	theCurrentState	= STATE_LOGINING;
+}
+
+- (void)sendLoginRequest
+{	
+    LoginRequest* request = [[LoginRequest alloc] initWithID:self.tempUserID
+                                                      orEmail:self.tempEmailString
+                                                     orMobile:self.tempMobileNum
+                                                   orLoginKey:self.tempLoginKey
+                                                  andPassword:self.tempPassword
+                                               andDeviceToken:self.DeviceToken
+                                                     andState:0
+                                             andUserLoginType:loginType
+                                                andTimeIntval:self.tempTimeIntVal];
+    
+    [[TheTCPClient getInstance] sendRequest:request delegate:self withTimeout:TcpLoginTimeout];
+
+}
+
+- (void)doLogoutWithDelegate:(id)theDelegate
+{	
+	self.delegate = theDelegate;
+	
+	//如果当前不在线，可以直接注销，不需要向服务器发登出请求
+	if (![self isOnline]) {
+		[self processUserLogouted:@"Logou when the state is not online."];
+		return;
+	}
+
+	LogoutRequest* request = [[LogoutRequest alloc] initWithUserID:self.theCurrentUserID];
+	
+	[[TheTCPClient getInstance] sendRequest:request delegate:self withTimeout:TcpLoginTimeout];
+	[self processUserLogouted:@"normal logout."];
+	//做完动作以后再设状态
+	theCurrentState = STATE_LOGOUTING;
+}
+
+- (void)processUserLogouted:(NSString*)error
+{
+	NSLog(@"The user is logout %@", error);
+	
+	theCurrentState = STATE_LOGOUTED;
+
+	didUpdateDetailInfo = NO;
+	
+	NSUserDefaults *SaveDefaults = [NSUserDefaults standardUserDefaults];
+	[SaveDefaults setObject:[NSNumber numberWithInt:0] forKey:@"LastUserLoginState"];
+	
+	if (self.delegate && [self.delegate respondsToSelector:@selector(theUserDidLogoutWithState:)]) {
+		[self.delegate theUserDidLogoutWithState:error];
+//		self.delegate = nil;
+	}
+	
+	[[TheTCPClient getInstance] reset];
+}
+
+- (void)doHeartbeat
+{
+	if (theCurrentState == STATE_ONLINE) {
+		HeartbeatRequrest* request = [[HeartbeatRequrest alloc] initWithUserID: self.theCurrentUserID];
+		
+		[[TheTCPClient getInstance] sendRequest:request delegate:nil withTimeout:0.0];
+	}
+}
+
+- (void)doUpdateUserDetailInfo
+{
+	GetDetailInfoRequest* getRequest = [[GetDetailInfoRequest alloc] initWithId:self.theCurrentUserID
+																	 andDetailId:self.theCurrentUserID];
+	
+	[[TheTCPClient getInstance] sendRequest:getRequest delegate:self withTimeout:TcpNetworkTimeout];
+}
+
+-(void)doGetOfflineP2PMsg
+{
+	GetOfflineP2PMessageRequest* getOfflineRequest = [[GetOfflineP2PMessageRequest alloc] initWithUserID:self.theCurrentUserID];
+	
+	[[TheTCPClient getInstance] sendRequest:getOfflineRequest delegate:nil withTimeout:TcpNetworkTimeout];
+}
+
+//- (void)detailInfoUpdateDidSave:(NSNotification*)saveNotification 
+//{
+//	//NSLog(@"TheUserManager::mergeChangesFromContextDidSaveNotification. [saveNotification = %@]", saveNotification);
+//	
+//	[self.theMainThreadContext mergeChangesFromContextDidSaveNotification:saveNotification];	
+//}
+
+
+//The response process
+- (void)onTCPClient:(TheTCPClient*)client request:(ClientRequest*)theRequest receiveResponse:(ClientResponse*)response
+{	
+	NSLog(@"TCP receiveResponse");
+	
+//	NSPersistentStoreCoordinator *coordinator = [[AppDelegate sharedAppDelegate] persistentStoreCoordinator];
+//    if (coordinator != nil) {
+//        self.threadManagedContext = [[NSManagedObjectContext alloc] init];
+//        [self.threadManagedContext  setPersistentStoreCoordinator:coordinator];
+//    }
+	
+	if (response.cmdId == CMD_LOGIN_RESPONSE) {
+		LoginResponse* loginResponse = [[LoginResponse alloc] initWithDataBlock:response.busiData];
+		if (loginResponse.retValue != 0) {
+			NSLog(@"登录失败!!! Error = %@", loginResponse.errorString);
+			
+			theCurrentState = STATE_OFFLINE;
+			
+			//更改应用配置信息
+            if ([loginResponse.errorString isEqualToString:@"用户名或密码错误"]) {
+                NSUserDefaults *saveDefaults = [NSUserDefaults standardUserDefaults];
+                [saveDefaults setObject:[NSNumber numberWithInt:0] forKey:@"LastUserLoginState"];
+            }
+            
+			if (self.delegate && [self.delegate respondsToSelector:@selector(theUserDidLogin:andUserInfo:andErrorString:)]) {
+				//[self.delegate theUserDidLogin:NO andErrorString:@"用户名或密码不正确"];
+				[self.delegate theUserDidLogin:NO andUserInfo:nil andErrorString:loginResponse.errorString];
+//				self.delegate = nil;
+			}
+			else {
+				//程序从后台到前台时的登录提示
+				//向appdelegate发送重登陆失败的消息
+				[[NSNotificationCenter defaultCenter] postNotificationName:userReloginErrorNotify object:nil];
+			}
+			
+			//登录失败需要断开网络连接吗?
+			
+			return;
+		}
+		
+		theCurrentUserID = loginResponse.userId;
+		
+		self.theSessionKey = [loginResponse.sessionKey copy];
+		self.tempUserID = loginResponse.userId;
+		self.tempUserType = loginResponse.userType;
+        
+
+		
+//		NSNotificationCenter *dnc = [NSNotificationCenter defaultCenter];
+//		[dnc addObserver:self selector:@selector(detailInfoUpdateDidSave:) name:NSManagedObjectContextDidSaveNotification object:self.threadManagedContext];
+		
+//		User* loginUser = [User userWithId:tempUserID
+//							   andPassword:tempPassword
+//								  andEmail:tempEmailString
+//					inManagedObjectContext:self.threadManagedContext];
+//		
+//		if (loginUser) {
+//			loginUser.lastlogindate = loginResponse.syncTime;
+//		}
+        
+        
+        
+        User_assist* loginUser = [[User_assist alloc]init];
+        loginUser.id = [NSNumber numberWithInt:self.tempUserID];
+        loginUser.emailAccount = tempEmailString;
+        loginUser.lastlogindate = loginResponse.syncTime;
+        loginUser.password = self.tempPassword;
+        
+        //bobo
+        [[UserDAO sharedManager] modifyUserData:loginUser];
+		//更改应用配置信息
+		NSUserDefaults *saveDefaults = [NSUserDefaults standardUserDefaults];
+		[saveDefaults setObject:loginUser.id forKey:LastUserID];
+		[saveDefaults setObject:loginUser.password forKey:LastUserPassword];
+        [saveDefaults setObject:[NSNumber numberWithInt:self.tempUserType] forKey:@"LastUserType"];
+		NSInteger RbPasswdState = [saveDefaults integerForKey:RememberPasswdState];
+		if(RbPasswdState == 1) {
+			[saveDefaults setObject:[NSNumber numberWithInt:1] forKey:LastUserLoginState];
+		} else {
+			[saveDefaults setObject:[NSNumber numberWithInt:0] forKey:LastUserLoginState];
+		}
+
+		
+//		NSError *error = nil;
+//		if ([self.threadManagedContext  hasChanges] && ![self.threadManagedContext  save:&error]) {
+//            NSLog(@"threadManagedContext saveContext Unresolved error %@, %@", error, [error userInfo]);
+//            abort();
+//        } 
+		
+//		[dnc removeObserver:self name:NSManagedObjectContextDidSaveNotification object:self.threadManagedContext];
+//		self.threadManagedContext = nil;
+		
+		NSLog(@"用户:%ld 登录成功!!!", (long)theCurrentUserID);
+		
+		theCurrentState = STATE_ONLINE;
+		
+		if (self.delegate && [self.delegate respondsToSelector:@selector(theUserDidLogin:andUserInfo:andErrorString:)]) {
+			[self.delegate theUserDidLogin:YES andUserInfo:loginUser andErrorString:nil];
+//			self.delegate = nil;
+		}
+		else {
+			//程序从后台到前台时的登录提示
+			//向appdelegate发送重登陆成功的消息
+			[[NSNotificationCenter defaultCenter] postNotificationName:userReloginedNotify object:nil];
+		}
+		
+		//向网络层发送用户登录通知
+		[[NSNotificationCenter defaultCenter] postNotificationName:UserLoginNotifier object:nil];
+		
+		if (!didUpdateDetailInfo) {
+			//更新用户详细资料,有可能在别的终端更新过
+            NSLog(@"登录成功后，调用获取用户详细资料函数。");
+			[self doUpdateUserDetailInfo];
+            didUpdateDetailInfo = NO;
+		}
+		
+		[self doGetOfflineP2PMsg];
+		
+		return;
+	}
+	else if(response.cmdId == CMD_GETDETAIL_RESPONSE)
+	{
+		GetDetailInfoResponse* getResponse = [[GetDetailInfoResponse alloc] initWithDataBlock:response.busiData];
+		if (getResponse.retValue != 0) {
+//        if (1) {
+            //失败添加代理出去。否则登录成功后，提示框不会隐藏。
+            if (self.delegate && [self.delegate respondsToSelector:@selector(getUserInfofailed)]) {
+                [self.delegate getUserInfofailed];
+            }
+			NSLog(@"更新用户详细资料失败!!!");
+			return;
+		}
+		NSLog(@"更新用户详细资料成功.");
+		
+		didUpdateDetailInfo = YES;
+		
+        [[UserDAO sharedManager] updateUserInfo:self.theCurrentUserID detailinfo:getResponse.detailInfo];
+
+		UserBaseInfo_assist *baseinfo = [[UserBaseInfo_assist alloc]init];
+        baseinfo.signtext   = [getResponse.detailInfo objectForKey:@"sign"];
+        baseinfo.nickname   = [getResponse.detailInfo objectForKey:@"nickName"];
+        baseinfo.level      = [getResponse.detailInfo objectForKey:@"level"];
+        baseinfo.locatearea = [getResponse.detailInfo objectForKey:@"locate"];
+        baseinfo.sex        = [getResponse.detailInfo objectForKey:@"sex"];
+        baseinfo.carinfo    = [getResponse.detailInfo objectForKey:@"carType"];
+        
+        if (self.delegate && [self.delegate respondsToSelector:@selector(isFinishedUserInfo:andErrorString:)]) {
+			[self.delegate isFinishedUserInfo:baseinfo andErrorString:nil];
+		}
+        
+		return;
+	}
+	else if(response.cmdId == CMD_LOGOUT_RESPONSE)
+	{
+		//[self processUserLogouted:@"normal logout."];
+	}
+}
+
+- (void)onTCPClient:(TheTCPClient*)client request:(ClientRequest*)theRequest didFailWithError:(NSString*)error
+{
+	NSLog(@"TheUserManager onTCPClient request didFailWithError = %@ self.delegate = %@", error, self.delegate);
+	
+	if (theCurrentState == STATE_LOGINING || theCurrentState == STATE_INIT) {
+		theCurrentState = STATE_OFFLINE;
+		
+		if (self.delegate && [self.delegate respondsToSelector:@selector(theUserDidLogin:andUserInfo:andErrorString:)]) {
+			[self.delegate theUserDidLogin:NO andUserInfo:nil andErrorString:error];
+//			self.delegate = nil;
+		}
+	}
+	else if(theCurrentState == STATE_LOGOUTING)
+	{
+		theCurrentState = STATE_INIT;
+		//[self processUserLogouted:error];
+	}
+}
+
+@end
+
+
+

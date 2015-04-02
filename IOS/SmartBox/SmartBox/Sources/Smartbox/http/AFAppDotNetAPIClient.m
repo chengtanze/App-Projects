@@ -1,0 +1,851 @@
+// AFAppDotNetAPIClient.h
+//
+// Copyright (c) 2012 Mattt Thompson (http://mattt.me/)
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+#import "AFAppDotNetAPIClient.h"
+#import "GDataXMLNode.h"
+#import "httpRequestDef.h"
+#import "PublicFunction.h"
+
+//////////////////
+@implementation AFAppPortAPIClient
++ (instancetype)sharedClient {
+    static AFAppPortAPIClient *_sharedClient = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        
+        _sharedClient = [[AFAppPortAPIClient alloc] initWithBaseURL:[NSURL URLWithString:AppBasePortURLString]];
+        _sharedClient.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
+        _sharedClient.responseSerializer = [AFHTTPResponseSerializer serializer];
+    });
+    
+    return _sharedClient;
+}
+
+//////////////////
+@end
+
+@implementation AFAppTsiAPIClient
++ (instancetype)sharedClient {
+    static AFAppTsiAPIClient *_sharedClient = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        
+        _sharedClient = [[AFAppTsiAPIClient alloc] initWithBaseURL:[NSURL URLWithString:AppBaseURLString]];
+        _sharedClient.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
+        _sharedClient.responseSerializer = [AFHTTPResponseSerializer serializer];
+    });
+    
+    return _sharedClient;
+}
+
+@end
+////////////
+@implementation AFAppDotNetAPIClient
+
++ (instancetype)sharedClient {
+    static AFAppDotNetAPIClient *_sharedClient = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _sharedClient = [[AFAppDotNetAPIClient alloc]init];
+//        _sharedClient = [[AFAppDotNetAPIClient alloc] initWithBaseURL:[NSURL URLWithString:AppBaseURLString]];
+//        _sharedClient.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
+//         _sharedClient.responseSerializer = [AFHTTPResponseSerializer serializer];
+    });
+    
+    return _sharedClient;
+}
+
+
+
+//xml 指定路径 转化为 字典类 bobo
+//-(NSDictionary*)getDicFromElemet:(GDataXMLElement *)recElement
+//{
+//    //    GDataXMLElement* recElement = [arrRecNode lastObject];
+//    NSMutableDictionary* recDir;
+//    if(recElement)
+//    {
+//        recDir = [[NSMutableDictionary alloc]init];
+//        NSMutableArray* arry = [[NSMutableArray alloc]init];
+//        for (GDataXMLElement* element in recElement.children) {
+//            NSLog(@"elent name =%@ elemt =%d",element.name, element.childCount);
+//            if (element.childCount>1) {
+//                
+//                NSDictionary* childrecDir = [self getDicFromElemet:element];
+//                if([[element name] isEqualToString:@"rec"])
+//                {
+//                    [arry addObject:childrecDir];
+//                }
+//                else
+//                {
+//                    [recDir  setObject:childrecDir forKey:[element name]];
+//                }
+//                
+//            }
+//            else{
+//                [recDir  setObject:[element stringValue] forKey:[element name]];
+//            }
+//        }
+//        if (arry.count>0) {
+//            [recDir setObject:arry forKey:@"rec"];
+////            [recDir  setObject:arry forKey:[recElement name]];
+//        }
+//        
+//    }
+//    return recDir;
+//}
+
++(id)getDicFromElemet:(GDataXMLElement *)recElement
+{
+    //    GDataXMLElement* recElement = [arrRecNode lastObject];
+    NSMutableDictionary* recDir;
+    if(recElement)
+    {
+        recDir = [[NSMutableDictionary alloc]init];
+        NSMutableArray* arry = [[NSMutableArray alloc]init];
+//        BOOL checkedRec = FALSE;
+        if([[recElement name] isEqualToString:@"data"])
+        {
+            GDataXMLNode* attribute = [recElement attributeForName:@"rows"];
+            if([[attribute stringValue] intValue] == 0)
+            {
+                return [[NSArray alloc]init];
+            }
+        }
+        
+        for (GDataXMLElement* element in recElement.children) {
+//            NSLog(@"elent name =%@ elemt =%d kind=%d",element.name, element.childCount,element.kind);
+            if (element.childCount>1 || [element.name isEqualToString:@"data"]) {
+        
+                NSDictionary* childrecDir = [self getDicFromElemet:element];
+                if([[element name] isEqualToString:@"rec"])
+                {
+                    [arry addObject:childrecDir];
+                }
+                else
+                {
+                    [recDir  setObject:childrecDir forKey:[element name]];
+                }
+                
+            }
+            else{
+                [recDir  setObject:[element stringValue] forKey:[element name]];
+            }
+        }
+        if (arry.count>0) {
+            //            [recDir setObject:arry forKey:@"rec"];
+//            [recDir  setObject:arry forKey:[recElement name]];
+            return arry;
+        }
+        
+    }
+    return recDir;
+}
+
+
+-(NSURLSessionDataTask*)httpRequest_handel:(NSString *)URLString parameters:params nodesXPath:(NSString*)nodesXPath complete:(void (^)(id DriveRecord, NSError *error))block
+{
+    return [self httpRequest_base_handel:nil URL:URLString parameters:params nodesXPath:nodesXPath complete:block];
+}
+
+//httpRequest_handel能避免发送协议解析编写重复代码
+-(NSURLSessionDataTask*)httpRequest_base_handel:(AFHTTPSessionManager*)httPSession URL:(NSString *)URLString parameters:params nodesXPath:(NSString*)nodesXPath complete:(void (^)(id DriveRecord, NSError *error))block
+{
+    AFHTTPSessionManager* AFPhttPSession = httPSession;
+    if(!AFPhttPSession)
+    {
+       AFPhttPSession = [AFAppTsiAPIClient sharedClient];
+    }
+    
+    return [AFPhttPSession POST:URLString parameters:params success:^(NSURLSessionDataTask * __unused task, id responseObject) {
+        NSString * xmlstring = [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding];
+        NSLog(@"%@",xmlstring);
+        
+        NSError* Xmlerror;
+        NSError* returnError;
+        //        NSMutableDictionary* recDir;
+        id repondWebData;
+        //
+        GDataXMLDocument *doc = [[GDataXMLDocument alloc] initWithData:[xmlstring dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&Xmlerror];
+        if (doc != nil)
+        {
+            
+            GDataXMLElement *firstName;
+            NSArray *arrNode = [doc nodesForXPath:@"//resultCode" error:nil];
+            if ([arrNode count] == 1) {
+                firstName = (GDataXMLElement *) [arrNode objectAtIndex:0];
+                if ([[firstName stringValue] isEqual:@"0"]) {
+                    //行驶记录
+                    NSArray *arrRecNode = [doc nodesForXPath:nodesXPath error:nil];
+                    NSLog(@"%@",arrRecNode);
+                    
+                    repondWebData = [AFAppDotNetAPIClient getDicFromElemet:[arrRecNode objectAtIndex:0]];
+                }
+                else
+                {
+                    int errorCode = [[firstName stringValue] intValue];
+                    NSArray *arrMsgNode = [doc nodesForXPath:@"//msg" error:nil];
+                    NSString* errorMsg;
+                    if (arrMsgNode.count) {
+                        GDataXMLElement*  msgElement = (GDataXMLElement *) [arrMsgNode objectAtIndex:0];
+                        if (msgElement) {
+                            errorMsg = [msgElement stringValue];
+                        }
+                        
+                    }
+                    
+                    returnError = [[NSError alloc]initWithDomain:errorMsg code:errorCode  userInfo:nil];
+                }
+                
+            }
+            
+        }
+        
+        if (block) {
+            if ([repondWebData isKindOfClass:[NSArray class]] || [repondWebData isKindOfClass:[NSDictionary class]]) {
+                 block(repondWebData, returnError);
+            }
+            else{
+                 block(nil, returnError);
+            }
+        }
+        //
+        
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block(nil, error);
+            NSLog(@"%@",error);
+        }
+    }];
+    
+}
+
+-(NSArray *)analysisDataFromXML:(NSString *)xmlString Key:(NSArray *)key{
+    NSMutableArray * array = [[NSMutableArray alloc]initWithCapacity:10];
+    NSError* Xmlerror;
+    GDataXMLDocument *document = [[GDataXMLDocument alloc] initWithData:[xmlString dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&Xmlerror];
+    if (document != nil)
+    {
+        //取出xml的根节点
+        GDataXMLElement* rootElement = [document rootElement];
+
+        //取出根节点的所有孩子节点
+        NSArray* children = [rootElement children];
+
+        for (GDataXMLElement *item in children)
+        {
+            for (NSString * string in key) {
+                //循环该item下的所有子节点
+                NSArray *names = [item elementsForName:string];
+                for(GDataXMLElement *name in names)
+                {
+                    NSMutableDictionary * dic = [[NSMutableDictionary alloc]initWithCapacity:10];
+                    NSLog(@">>> my name is : %lu", (unsigned long)name.childCount);
+                    
+                    for (NSUInteger index = 0; index < name.childCount; index++) {
+                        GDataXMLElement *data =  name.children[index];
+                        NSLog(@">>>value:%@ Key:%@", data.stringValue, data.name);
+                        
+                        [dic setObject:data.stringValue forKey:data.name];
+                    }
+                    
+                    [array addObject:dic];
+                }
+                //如果这个item没有子节点，直接获取该item的值
+                if (names == nil && [item.name isEqualToString:string]) {
+                    NSMutableDictionary * dic = [[NSMutableDictionary alloc]initWithCapacity:10];
+                    [dic setObject:item.stringValue forKey:item.name];
+                    [array addObject:dic];
+                }
+            }
+        }
+    }
+    
+    return array;
+}
+
+
+-(NSURLSessionDataTask*)httpRequest_handel:(NSString *)URLString parameters:params StringArray:(NSArray*)stringArray complete:(void (^)(id DriveRecord, NSError *error))block
+{
+    return [[AFAppTsiAPIClient sharedClient] POST:URLString parameters:params success:^(NSURLSessionDataTask * __unused task, id responseObject) {
+        NSString * xmlstring = [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding];
+        NSLog(@"%@",xmlstring);
+        
+        NSError* returnError;
+        id repondWebData;
+        
+        NSArray * arrayResult = @[@"resultCode"];
+        NSArray * data = [self analysisDataFromXML:xmlstring Key:arrayResult];
+        
+        if (data.count == 1)
+        {
+            NSString * strResult = [data[0] valueForKey:@"resultCode"];
+            if ([strResult isEqual:@"0"])
+            {
+                repondWebData = [self analysisDataFromXML:xmlstring Key:stringArray];
+            }
+            else{
+                NSString * errorMsg;
+                NSInteger errorCode = [strResult integerValue];
+                NSArray * arrayResult = @[@"msg"];
+                NSArray *arrMsgNode = [self analysisDataFromXML:xmlstring Key:arrayResult];
+                if (arrMsgNode.count > 0) {
+                    errorMsg = [arrMsgNode[0] valueForKey:@"msg"];
+                }
+                returnError = [[NSError alloc]initWithDomain:errorMsg code:errorCode  userInfo:nil];
+            }
+
+            
+        }
+        
+        if (block) {
+            if ([repondWebData isKindOfClass:[NSArray class]] || [repondWebData isKindOfClass:[NSDictionary class]]) {
+                block(repondWebData, returnError);
+            }
+            else{
+                block(nil, returnError);
+            }
+        }
+        //
+        
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block(nil, error);
+            NSLog(@"%@",error);
+        }
+    }];
+    
+}
+
+
+//-(NSURLSessionDataTask*)GetadverImgesInfo:(void (^)(NSArray *posts, NSError *error))block
+//{
+//    NSString *useridString = [NSString stringWithFormat:@"%d", [[LoginManager sharedInstance].userId integerValue]];
+//    
+//    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+//    
+////    [params setObject:useridString forKey:@"userId"];
+//    [params setObject:@"/clb/apps/companyIntroduction_getDefaultActivity4Mobile.action" forKey:@"url"];
+//    [params setObject: [NSString stringWithFormat:@"%d", 1] forKey:@"page.currentPage"];
+//    [params setObject: [NSString stringWithFormat:@"%d", 4] forKey:@"page.perPageSize"];
+//    [params setObject: @"pd" forKey:@"appVersion"];
+////    [AFAppDotNetAPIClient sharedClient].responseSerializer = [AFJSONResponseSerializer serializer];
+//
+//
+//    
+//    return [self POST:@"agent/interface/clb_route.action?" parameters:params success:^(NSURLSessionDataTask * __unused task, id receiveObj) {
+//        
+//        NSDictionary *result  = (NSDictionary*)receiveObj;
+//        NSLog(@"%@",[receiveObj class]);
+////        NSData *data = [receiveString dataUsingEncoding:NSUTF8StringEncoding];
+////        NSDictionary *result = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:nil];
+////
+//        NSLog(@"ismainThread %d",[NSThread isMainThread]);
+//        
+//        if ([result valueForKey:@"activitys"] != nil) {
+//            
+//            NSArray *arr = [result valueForKey:@"activitys"];
+//            
+//        if (block) {
+//            block([NSArray arrayWithArray:arr], nil);
+//        }
+//        }
+//
+//    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+//        if (block) {
+//            block([NSArray array], error);
+//            NSLog(@"%@",error);
+//        }
+//    }];
+//        
+//}
+
+- (NSURLSessionDataTask*)getValiateCodeRequest:(NSString*)phoneNum complete:(void (^)(NSString *datas, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%ld", (long)userId];
+   
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[CTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject: phoneNum forKey:@"mobileNo"];
+    [params setObject: [NSString stringWithFormat:@"%d", 1] forKey:@"type"];
+
+    NSLog(@"SignMd5=%@",SignMd5);
+
+    
+    return [[AFAppTsiAPIClient sharedClient] POST:@"tsi/api/cyhl/getMbValidCode?" parameters:params success:^(NSURLSessionDataTask * __unused task, id responseObject) {
+        NSString * xmlstring = [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding];
+        NSLog(@"%@",xmlstring);
+       
+            if (block) {
+                block(xmlstring, nil);
+            }
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block([[NSString alloc]init], error);
+            NSLog(@"%@",error);
+        }
+    }];
+    
+}
+
+
+- (NSURLSessionDataTask*)getNowPwd:(NSString*)passWord validcode:(NSString*)vcode phoneNum:(NSString*)phNum  complete:(void (^)(NSString *responsexml, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%ld", (long)userId];
+    
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[CTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject: vcode forKey:@"validCode"];
+    [params setObject: passWord forKey:@"passWord"];
+    [params setObject: phNum  forKey:@"mobileNo"];
+    
+    NSLog(@"SignMd5=%@",SignMd5);
+   
+    
+    return [[AFAppTsiAPIClient sharedClient] POST:@"tsi/api/cyhl/updateCYHLUserPwd?" parameters:params success:^(NSURLSessionDataTask * __unused task, id responseObject) {
+        NSString * xmlstring = [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding];
+        NSLog(@"%@",xmlstring);
+        
+        NSError* Xmlerror;
+        NSError* returnError;
+
+        //
+            NSLog(@"注册或修改密码的请求返回信息:%@",xmlstring);
+            GDataXMLDocument *doc = [[GDataXMLDocument alloc] initWithData:[xmlstring dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&Xmlerror];
+            if (doc != nil)
+            {
+                GDataXMLElement *firstName;
+                NSArray *arrNode = [doc nodesForXPath:@"//resultCode" error:nil];
+                if ([arrNode count] == 1) {
+                    firstName = (GDataXMLElement *) [arrNode objectAtIndex:0];
+                    if ([[firstName stringValue] isEqual:@"0"]) {
+                        //找回密码
+                        
+                    } else if ([[firstName stringValue] isEqual:@"9080"]) {
+                        returnError = [[NSError alloc]initWithDomain:@"验证码错误或者验证码已经过期." code:9080 userInfo:nil];
+                    } else if ([[firstName stringValue] isEqual:@"9085"]) {
+                        returnError = [[NSError alloc]initWithDomain:@"手机号码已经注册." code:9085 userInfo:nil];
+       
+                    } else if ([[firstName stringValue] isEqual:@"9086"]) {
+                       returnError = [[NSError alloc]initWithDomain:@"该手机号没有注册." code:9086 userInfo:nil];
+
+                    } else if ([[firstName stringValue] isEqual:@"9088"]) {
+                        returnError = [[NSError alloc]initWithDomain:@"该手机号已被使用" code:9089 userInfo:nil];
+                     
+                    } else if ([[firstName stringValue] isEqual:@"9003"]) {
+                         returnError = [[NSError alloc]initWithDomain:@"参数错误." code:9009 userInfo:nil];
+                    }
+                    else
+                    {
+                        int errorCode = [[firstName stringValue] intValue];
+                        NSArray *arrMsgNode = [doc nodesForXPath:@"//msg" error:nil];
+                        NSString* errorMsg;
+                        if (arrMsgNode.count) {
+                            GDataXMLElement*  msgElement = (GDataXMLElement *) [arrMsgNode objectAtIndex:0];
+                            if (msgElement) {
+                                errorMsg = [msgElement stringValue];
+                            }
+                            
+                        }
+                        
+                        returnError = [[NSError alloc]initWithDomain:errorMsg code:errorCode  userInfo:nil];
+                    }
+                        
+                }
+
+            }
+        if (block) {
+            block(nil, returnError);
+        }
+        //
+ 
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block(nil, error);
+            NSLog(@"%@",error);
+        }
+    }];
+
+}
+
+-(NSURLSessionDataTask*)findLastDriveRecord:(void (^)(NSDictionary *DriveRecord, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/driveManagerApi/findLastDriveRecord.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    
+        return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//data//info" complete:block];
+//    return [self POST:UTILSAPI parameters:params success:^(NSURLSessionDataTask * __unused task, id responseObject) {
+//        NSString * xmlstring = [[NSString alloc] initWithData:responseObject encoding:NSUTF8StringEncoding];
+//        NSLog(@"%@",xmlstring);
+//        
+//        NSError* Xmlerror;
+//        NSError* returnError;
+//        NSMutableDictionary* recDir;
+//        //
+//        GDataXMLDocument *doc = [[GDataXMLDocument alloc] initWithData:[xmlstring dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&Xmlerror];
+//        if (doc != nil)
+//        {
+//            
+//            GDataXMLElement *firstName;
+//            NSArray *arrNode = [doc nodesForXPath:@"//resultCode" error:nil];
+//            if ([arrNode count] == 1) {
+//                firstName = (GDataXMLElement *) [arrNode objectAtIndex:0];
+//                if ([[firstName stringValue] isEqual:@"0"]) {
+//                    //行驶记录
+//                    NSArray *arrRecNode = [doc nodesForXPath:@"//data//info" error:nil];
+//                    NSLog(@"%@",arrRecNode);
+//                    if(arrRecNode.count>=1)
+//                    {
+//                        GDataXMLElement* recElement = [arrRecNode lastObject];
+//                        if(recElement)
+//                        {
+//                            recDir = [[NSMutableDictionary alloc]init];
+//                            for (GDataXMLElement* element in recElement.children) {
+//                                [recDir  setObject:[element stringValue] forKey:[element name]];
+//                            }
+//                        }
+//                    }
+//                }
+//                else
+//                {
+//                    int errorCode = [[firstName stringValue] intValue];
+//                    NSArray *arrMsgNode = [doc nodesForXPath:@"//msg" error:nil];
+//                    NSString* errorMsg;
+//                    if (arrMsgNode.count) {
+//                        GDataXMLElement*  msgElement = (GDataXMLElement *) [arrMsgNode objectAtIndex:0];
+//                        if (msgElement) {
+//                            errorMsg = [msgElement stringValue];
+//                        }
+//                        
+//                    }
+//                    
+//                    returnError = [[NSError alloc]initWithDomain:errorMsg code:errorCode  userInfo:nil];
+//                }
+//                
+//            }
+//            
+//        }
+//        
+//        if (block) {
+//            block(recDir, returnError);
+//        }
+//        //
+//        
+//    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+//        if (block) {
+//            block(nil, error);
+//            NSLog(@"%@",error);
+//        }
+//    }];
+
+    
+}
+
+
+-(NSURLSessionDataTask*)findDriveRecordForWeek:(NSString*)strStartDate endDate:(NSString*)strEndDate complete:(void (^)(NSArray *repondData, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:strStartDate  forKey:@"startDate"];
+    [params setObject:strEndDate  forKey:@"endDate"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/driveManagerApi/findDriveRecordForWeek.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//data" complete:block];
+
+}
+
+
+-(NSURLSessionDataTask*)getCarTrackData:(NSString*)strStartTime endDate:(NSString*)strEndTime complete:(void (^)(NSDictionary *DriveRecord, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:strStartTime  forKey:@"beginTime"];
+    [params setObject:strEndTime  forKey:@"endTime"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/VehicleTrack/getCarTrackData.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//data//info" complete:block];
+}
+
+
+//获取爱车位置
+-(NSURLSessionDataTask*)getCarLocation:(void (^)(NSDictionary *CarLocationDic, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridStr = [NSString stringWithFormat:@"%d", userId];
+    
+    NSString *Sign=[NSString stringWithFormat:@"%@%@",useridStr,kTokenKey];
+    NSString *SignMd5=[Sign MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridStr forKey:@"userid"];
+    [params setObject: SignMd5 forKey:@"sign"];
+
+    return [self httpRequest_handel:kQueryCarURL parameters:params nodesXPath:@"//trackInfo" complete:block];
+}
+
+
+//获取单次驾驶异常(有问题)
+-(NSURLSessionDataTask*)findDriveRecordAbnormalList:(NSString*)recordId  complete:(void (^)(NSDictionary *CarLocationDic, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:recordId forKey:@"recordId"];
+    [params setObject:timeString  forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/driveManagerApi/findDriveRecordAbnormalList.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//root" complete:block];
+}
+
+
+//-(NSURLSessionDataTask*)getDriveScore:(NSString*)strBeginDate endDate:(NSString*)strEndDate complete:(void (^)(NSDictionary *DriveRecord, NSError *error))block
+//{
+//    NSInteger userId = 683345;//[[LoginManager sharedInstance].userId integerValue];
+//    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+//    
+//    NSDate *nowdate = [NSDate date];
+//    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+//    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+//    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+//    
+//    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+//    [params setObject: useridString forKey:@"userId"];
+//    [params setObject:strBeginDate  forKey:@"strBeginDate"];
+//    [params setObject:strEndDate  forKey:@"strEndDate"];
+//    [params setObject:timeString  forKey:@"timestamp"];
+//    [params setObject: SignMd5 forKey:@"sign"];
+//    [params setObject:@"obd/statisticsApi/getDriveScore" forKey:@"methodName"];
+//    [params setObject:@"obd" forKey:@"serverName"];
+//    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//root" complete:block];
+//}
+//有问题
+-(NSURLSessionDataTask*)findRecordIntegralList:(void (^)(NSDictionary *repondDic, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%ld", (long)userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:timeString  forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/integralManagerApi/findHistoryIntegralList.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//datas" complete:block];
+}
+
+
+
+-(NSURLSessionDataTask*)getUserPointOfDate:(void (^)(NSArray *repondData, NSError *error))block
+{
+    NSString *useridString = [LoginManager sharedInstance].userId;//userId
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];//@"1425635008444";
+    NSString *SignMd5=[[[useridString stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject:@"obd/rankingManagerApi/findDailyScoreRanking.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    
+    NSString *strDate = [NSString stringWithFormat:@"%@-%@-%@", [PublicFunction getCurYear],[PublicFunction getCurMonth],[PublicFunction getCurDay] ];
+    
+    [params setObject:strDate forKey:@"currentDate"];
+    
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//data" complete:block];
+    
+}
+
+-(NSURLSessionDataTask*)getUserMileageOfWeek:(NSString*)strStartTime endDate:(NSString*)strEndTime complete:(void (^)(NSArray *repondData, NSError *error))block
+{
+//    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [LoginManager sharedInstance].userId;//userId
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];//@"1425635008444";
+    NSString *SignMd5=[[[useridString stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: SignMd5 forKey:@"sign"];//@"f34790ee1251dc78a6da7748775d7a46"
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject:@"obd/rankingManagerApi/findWeekMileageRanking.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    
+//    NSString *strDate = [NSString stringWithFormat:@"%@-%@-%@", [PublicFunction getCurYear],[PublicFunction getCurMonth],[PublicFunction getCurDay] ];
+    NSString *strDate = @"2015-02-06";
+    [params setObject:strDate forKey:@"endDate"];
+    
+    NSString *strBegin = @"2015-02-01";
+    [params setObject:strBegin forKey:@"startDate"];
+    
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//data" complete:block];
+    
+}
+
+-(NSURLSessionDataTask*)getUserTotalScore:(void (^)(NSArray *repondData, NSError *error))block
+{
+    NSString *useridString = [LoginManager sharedInstance].userId;//userId
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];//@"1425635008444";
+    NSString *SignMd5=[[[useridString stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject:@"obd/rankingManagerApi/findTotalScoreRanking.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    
+    NSString *strDate = [NSString stringWithFormat:@"%@-%@-%@", [PublicFunction getCurYear],[PublicFunction getCurMonth],[PublicFunction getCurDay] ];
+    
+    [params setObject:strDate forKey:@"currentDate"];
+    
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//data" complete:block];
+    
+}
+
+-(NSURLSessionDataTask*)getUserDetailInfo:(void (^)(NSArray *repondData, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[CTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject: timeString forKey:@"timestamp"];
+//    [params setObject:@"obd/rankingManagerApi/findTotalScoreRanking.xml" forKey:@"methodName"];
+//    [params setObject:@"obd" forKey:@"serverName"];
+    
+    NSString *strDate = [NSString stringWithFormat:@"%@-%@-%@", [PublicFunction getCurYear],[PublicFunction getCurMonth],[PublicFunction getCurDay] ];
+    
+    [params setObject:strDate forKey:@"currentDate"];
+    
+    return [self httpRequest_handel:@"tsi/api/userinfo/userDetialInfoApi" parameters:params StringArray:@[@"userBaseInfo", @"userDetailInfo", @"blog"] complete:block];
+    
+}
+//http://tsi.365car.com.cn/tsi/api/userinfo/userDetialInfoApi?userId=583471&timestamp=1425635008444&sign=f34790ee1251dc78a6da7748775d7a46
+
+-(NSURLSessionDataTask*)getUserIntegral:(void (^)(NSArray *repondData, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject:@"obd/integralManagerApi/findUserIntegral.xml" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    
+    NSString *strDate = [NSString stringWithFormat:@"%@-%@-%@", [PublicFunction getCurYear],[PublicFunction getCurMonth],[PublicFunction getCurDay] ];
+    
+    [params setObject:strDate forKey:@"currentDate"];
+    
+    return [self httpRequest_handel:UTILSAPI parameters:params nodesXPath:@"//data//info" complete:block];
+    
+}
+
+@end
+
+
+
+
+

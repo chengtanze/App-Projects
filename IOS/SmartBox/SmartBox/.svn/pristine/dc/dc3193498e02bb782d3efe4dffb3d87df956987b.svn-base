@@ -1,0 +1,147 @@
+//
+//  AFJsonAPIClient.m
+//  Smartbox
+//
+//  Created by Mesada on 15/1/16.
+//  Copyright (c) 2015年 mesada. All rights reserved.
+//
+
+#import "AFJsonAPIClient.h"
+#import "httpRequestDef.h"
+
+@implementation AFJsonAPIClient
++ (instancetype)sharedClient {
+    static AFJsonAPIClient *_sharedClient = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _sharedClient = [[AFJsonAPIClient alloc] initWithBaseURL:[NSURL URLWithString:AppBaseURLString]];
+        _sharedClient.securityPolicy = [AFSecurityPolicy policyWithPinningMode:AFSSLPinningModeNone];
+        _sharedClient.responseSerializer = [AFJSONResponseSerializer serializer];
+    });
+    
+    return _sharedClient;
+}
+
+-(NSURLSessionDataTask*)httpRequest_handel:(NSString *)URLString parameters:params  complete:(void (^)(NSDictionary *DriveRecord, NSError *error))block
+{
+    return [self POST:URLString parameters:params success:^(NSURLSessionDataTask * __unused task, id jsonObj) {
+        
+        NSDictionary *jsonDate  = (NSDictionary*)jsonObj;
+        NSLog(@"json =%@",[jsonDate class]);
+        
+        NSLog(@"ismainThread %d",[NSThread isMainThread]);
+        
+        
+        if (jsonDate) {
+            NSNumber* errCode = [[jsonDate valueForKey:@"result"] valueForKey:@"errCode"];
+            if (errCode) {
+                int nerrCode = [errCode intValue];
+                if (nerrCode != 0) {
+                   return  block(nil, [[NSError alloc]initWithDomain:@"获取失败" code:[errCode intValue]  userInfo:nil]);
+
+                }
+            }
+        }
+        
+        
+        NSDictionary *dateDic = jsonDate;
+        if (dateDic) {
+            if (block) {
+               return  block([NSDictionary dictionaryWithDictionary:dateDic], nil);
+            }
+        }
+        
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block(nil, error);
+            NSLog(@"%@",error);
+        }
+    }];
+}
+
+//获取行驶统计
+-(NSURLSessionDataTask*)getDrivingCount:(NSString*)strbeginTime endTime:(NSString*)strendTime complete:(void (^)(NSDictionary *drivingCount, NSError *error))block
+{
+    //debug bobo
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:strbeginTime  forKey:@"beginTime"];
+    [params setObject:strendTime  forKey:@"endTime"];
+    [params setObject: timeString forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/statisticsApi/getDrivingCount" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+    
+    //
+    //
+    //
+    return [self POST:@"tsi/api/httpUtilsApi/commonPost?" parameters:params success:^(NSURLSessionDataTask * __unused task, id jsonObj) {
+        
+        NSDictionary *jsonDate  = (NSDictionary*)jsonObj;
+        NSLog(@"json =%@",[jsonDate class]);
+        
+        NSLog(@"ismainThread %d",[NSThread isMainThread]);
+        
+        NSDictionary * resultDate =  [jsonDate valueForKey:@"drivingCount"];
+        
+        if (resultDate) {
+            NSNumber* errCode = [resultDate valueForKey:@"errCode"];
+            if (errCode) {
+                int nerrCode = [errCode intValue];
+                if (nerrCode != 0) {
+                    block(nil, [[NSError alloc]initWithDomain:@"获取失败" code:[errCode intValue]  userInfo:nil]);
+                    return;
+                }
+            }
+        }
+        
+        
+        NSDictionary *dateDic = [jsonDate valueForKey:@"drivingCount"];
+        if (dateDic) {
+            if (block) {
+                block([NSDictionary dictionaryWithDictionary:dateDic], nil);
+            }
+        }
+        
+    } failure:^(NSURLSessionDataTask *__unused task, NSError *error) {
+        if (block) {
+            block(nil, error);
+            NSLog(@"%@",error);
+        }
+    }];
+    
+}
+
+
+-(NSURLSessionDataTask*)getDriveScore:(NSString*)strBeginDate endDate:(NSString*)strEndDate complete:(void (^)(NSDictionary *RspondDate, NSError *error))block
+{
+    NSInteger userId = [[LoginManager sharedInstance].userId integerValue];//[[LoginManager sharedInstance].userId integerValue];
+    NSString *useridString = [NSString stringWithFormat:@"%d", userId];
+    
+    NSDate *nowdate = [NSDate date];
+    NSTimeInterval timeInterval = [nowdate timeIntervalSince1970];
+    NSString *timeString = [NSString stringWithFormat:@"%f", timeInterval * 1000];
+    NSString *SignMd5=[[[[NSString stringWithFormat:@"%ld",(long)userId] stringByAppendingString:[OBDTokenKey MD5]] stringByAppendingString:timeString] MD5];
+    
+    NSMutableDictionary * params= [[NSMutableDictionary alloc]init];
+    [params setObject: useridString forKey:@"userId"];
+    [params setObject:strBeginDate  forKey:@"beginTime"];
+    [params setObject:strEndDate  forKey:@"endTime"];
+    [params setObject:timeString  forKey:@"timestamp"];
+    [params setObject: SignMd5 forKey:@"sign"];
+    [params setObject:@"obd/statisticsApi/getDriveScore" forKey:@"methodName"];
+    [params setObject:@"obd" forKey:@"serverName"];
+  
+    return [self httpRequest_handel:UTILSAPI parameters:params complete:block];
+}
+
+
+@end

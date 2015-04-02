@@ -1,0 +1,72 @@
+// AFAppDotNetAPIClient.h
+//
+// Copyright (c) 2012 Mattt Thompson (http://mattt.me/)
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+#import <Foundation/Foundation.h>
+#import "AFHTTPSessionManager.h"
+
+@interface AFAppDotNetAPIClient : NSObject 
+
++ (instancetype)sharedClient;
+
+
+//-(NSURLSessionDataTask*)GetadverImgesInfo:(void (^)(NSArray *posts, NSError *error))block ;
+- (NSURLSessionDataTask*)getValiateCodeRequest:(NSString*)phoneNum complete:(void (^)(NSString *datas, NSError *error))block;
+//找回密码
+- (NSURLSessionDataTask*)getNowPwd:(NSString*)passWord validcode:(NSString*)vcode phoneNum:(NSString*)phNum complete:(void (^)(NSString *xmlstring, NSError *error))block;
+//获取最后一次驶记录
+-(NSURLSessionDataTask*)findLastDriveRecord:(void (^)(NSDictionary *DriveRecord, NSError *error))block;
+//获取行驶记录
+-(NSURLSessionDataTask*)findDriveRecordForWeek:(NSString*)strStartDate endDate:(NSString*)strEndDate complete:(void (^)(NSArray *DriveRecord, NSError *error))block;
+//获取行车轨迹
+-(NSURLSessionDataTask*)getCarTrackData:(NSString*)strStartTime endDate:(NSString*)strEndTime complete:(void (^)(NSDictionary *DriveRecord, NSError *error))block;
+//获取爱车位置
+-(NSURLSessionDataTask*)getCarLocation:(void (^)(NSDictionary *CarLocationDic, NSError *error))block;
+//获取单次驾驶异常
+-(NSURLSessionDataTask*)findDriveRecordAbnormalList:(NSString*)recordId  complete:(void (^)(NSDictionary *CarLocationDic, NSError *error))block;
+//获取用户积分记录
+-(NSURLSessionDataTask*)findRecordIntegralList:(void (^)(NSDictionary *repondDic, NSError *error))block;
+
+//获取用户日评分
+-(NSURLSessionDataTask*)getUserPointOfDate:(void (^)(NSArray *repondData, NSError *error))block;
+
+//获取周里程排行
+-(NSURLSessionDataTask*)getUserMileageOfWeek:(NSString*)strStartTime endDate:(NSString*)strEndTime complete:(void (^)(NSArray *repondData, NSError *error))block;
+
+//获取用户总积分排名
+-(NSURLSessionDataTask*)getUserTotalScore:(void (^)(NSArray *repondData, NSError *error))block;
+
+//获取用户详细资料
+-(NSURLSessionDataTask*)getUserDetailInfo:(void (^)(NSArray *repondData, NSError *error))block;
+
+
+
+@end
+
+@interface AFAppTsiAPIClient : AFHTTPSessionManager
+//发送请求
++ (instancetype)sharedClient;
+@end
+
+@interface AFAppPortAPIClient : AFHTTPSessionManager
+//发送请求
++ (instancetype)sharedClient;
+@end
